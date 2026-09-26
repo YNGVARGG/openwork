@@ -46,9 +46,7 @@ import {
 } from "./nuke.mjs";
 import {
   createConnectLinkReplayGuard,
-  extractConnectExchange,
-  resolveConnectExchangeUrl,
-  verifyConnectLinkUrl,
+  resolveConnectLinkUrl,
 } from "./connect-link.mjs";
 import {
   applyDesktopBootstrapBrandIcon,
@@ -1180,13 +1178,11 @@ const connectLinkReplayGuard = createConnectLinkReplayGuard({
   filePath: path.join(app.getPath("userData"), "connect-link-seen.json"),
 });
 
-/**
- * @param {string} rawUrl
- * @returns {import("@openwork/types/connect-link").ConnectLinkVerifyResult}
- */
-function verifyConnectLink(rawUrl) {
-  return verifyConnectLinkUrl(String(rawUrl ?? ""), {
+async function resolveDesktopConnectLink(rawUrl, mode) {
+  return resolveConnectLinkUrl(String(rawUrl ?? ""), {
+    mode,
     schemes: DEEP_LINK_PROTOCOLS,
+    fetcher: electronNet.fetch,
     publicKeys: resolveConnectLinkPublicKeys(),
     // http is refused everywhere except loopback targets in dev runs.
     allowInsecureLoopback: isDevMode,
@@ -1194,27 +1190,11 @@ function verifyConnectLink(rawUrl) {
 }
 
 async function previewConnectLink(rawUrl) {
-  if (extractConnectExchange(rawUrl)) {
-    return resolveConnectExchangeUrl(rawUrl, {
-      mode: "preview",
-      schemes: DEEP_LINK_PROTOCOLS,
-      fetcher: electronNet.fetch,
-      allowInsecureLoopback: isDevMode,
-    });
-  }
-  return verifyConnectLink(rawUrl);
+  return resolveDesktopConnectLink(rawUrl, "preview");
 }
 
 async function acceptConnectLink(rawUrl) {
-  if (extractConnectExchange(rawUrl)) {
-    return resolveConnectExchangeUrl(rawUrl, {
-      mode: "exchange",
-      schemes: DEEP_LINK_PROTOCOLS,
-      fetcher: electronNet.fetch,
-      allowInsecureLoopback: isDevMode,
-    });
-  }
-  return verifyConnectLink(rawUrl);
+  return resolveDesktopConnectLink(rawUrl, "exchange");
 }
 
 async function persistConnectLinkClaims(claims) {
@@ -2311,6 +2291,7 @@ const desktopCommandHandlers = {
       BLANK_SLATE_LAUNCH.enabled || DESKTOP_DISTRIBUTION.flavor === "enterprise" ? null : args[0],
       {
       fallbackName: APP_NAME,
+      allowCustomAppName: DESKTOP_DISTRIBUTION.allowCustomAppName,
       platform: process.platform,
       updateElectronAppName: process.platform === "darwin",
       runtimeProcess: process,
@@ -2972,6 +2953,7 @@ or use: pnpm dev:worktree`);
         : bootstrapConfig.brandAppName,
       {
       fallbackName: APP_NAME,
+      allowCustomAppName: DESKTOP_DISTRIBUTION.allowCustomAppName,
       platform: process.platform,
       updateElectronAppName: true,
       runtimeProcess: process,

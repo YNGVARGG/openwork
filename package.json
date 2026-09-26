@@ -45,7 +45,7 @@
     "check:enterprise-mock-lab": "pnpm --filter @openwork-ee/enterprise-mock-lab check",
     "check:diagnostics": "pnpm --filter @openwork-ee/diagnostics test && pnpm --filter @openwork-ee/diagnostics build",
     "test": "pnpm test:core",
-    "test:cvc": "node --test scripts/cvc.test.mjs apps/desktop/electron/cvc-isolation.test.mjs apps/desktop/electron/desktop-distribution.test.mjs apps/desktop/electron/electron-builder-config.test.mjs apps/desktop/electron/dev-profile.test.mjs apps/desktop/electron/updater.test.mjs apps/desktop/electron/sentry.test.mjs",
+    "test:cvc": "node --test scripts/cvc.test.mjs apps/desktop/electron/cvc-isolation.test.mjs apps/desktop/electron/desktop-distribution.test.mjs apps/desktop/electron/electron-builder-config.test.mjs apps/desktop/electron/dev-profile.test.mjs apps/desktop/electron/updater.test.mjs apps/desktop/electron/sentry.test.mjs apps/desktop/electron/brand-app-name.test.mjs apps/desktop/electron/connect-link.test.mjs apps/desktop/electron/browser-panel.test.mjs",
     "test:health": "pnpm --filter @openwork/app test:health",
     "test:sessions": "pnpm --filter @openwork/app test:sessions",
     "test:refactor": "pnpm --filter @openwork/app test:refactor",

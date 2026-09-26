@@ -28,7 +28,8 @@ describe("resolveDesktopDistribution", () => {
         requireSignin: false,
         requireActivation: false,
         updatesEnabled: false,
-        telemetryEnabled: false,
+      telemetryEnabled: false,
+      allowCustomAppName: false,
       },
     );
   });

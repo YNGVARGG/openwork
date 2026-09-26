@@ -440,6 +440,30 @@ export async function resolveConnectExchangeUrl(rawUrl, options) {
 }
 
 /**
+ * Resolves either a signed connect link or a keyless exchange link. The
+ * caller supplies one scheme set for both classification and resolution, so a
+ * distribution-specific protocol cannot be accepted by one step and refused
+ * by the next.
+ *
+ * @param {string} rawUrl
+ * @param {{
+ *   mode: "preview" | "exchange",
+ *   fetcher: (url: string, init: object) => Promise<Response>,
+ *   publicKeys: Record<string, string>,
+ *   nowEpochSeconds?: number,
+ *   allowInsecureLoopback?: boolean,
+ *   schemes?: readonly string[],
+ * }} options
+ * @returns {Promise<import("@openwork/types/connect-link").ConnectLinkVerifyResult>}
+ */
+export async function resolveConnectLinkUrl(rawUrl, options) {
+  if (extractConnectExchange(rawUrl, { schemes: options.schemes })) {
+    return resolveConnectExchangeUrl(rawUrl, options);
+  }
+  return verifyConnectLinkUrl(rawUrl, options);
+}
+
+/**
  * Maps verified claims to the only local fields the connection handoff may
  * change. Kept here so both transports share an independently tested boundary.
  *

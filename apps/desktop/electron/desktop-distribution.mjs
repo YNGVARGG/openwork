@@ -16,6 +16,7 @@ export const CVC_DESKTOP_DISTRIBUTION = Object.freeze({
   requireActivation: false,
   updatesEnabled: false,
   telemetryEnabled: false,
+  allowCustomAppName: false,
 });
 
 export const CLOUD_DESKTOP_DISTRIBUTION = Object.freeze({

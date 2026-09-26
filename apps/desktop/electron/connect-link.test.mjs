@@ -10,6 +10,7 @@ import {
   desktopBootstrapFromConnectClaims,
   extractConnectExchange,
   extractConnectLinkToken,
+  resolveConnectLinkUrl,
   resolveConnectExchangeUrl,
   verifyConnectLinkToken,
   verifyConnectLinkUrl,
@@ -137,6 +138,51 @@ test("resolves a keyless exchange through the exact HTTPS Den endpoint", async (
     brandLogoUrl: "https://assets.acme.example.com/wordmark.svg",
     brandIconUrl: "https://assets.acme.example.com/icon.png",
   });
+});
+
+test("routes CVC keyless links through preview and exchange without fetching foreign schemes", async () => {
+  const code = "abcdefghijklmnopqrstuvwxyz123456";
+  const apiBaseUrl = "https://api.openwork.acme.example.com";
+  const expected = claims({
+    iss: apiBaseUrl,
+    den: { baseUrl: "https://openwork.acme.example.com", apiBaseUrl },
+  });
+  const cvcSchemes = ["cvc-studio:"];
+  const rawUrl = `cvc-studio://connect?code=${code}&apiBaseUrl=${encodeURIComponent(apiBaseUrl)}`;
+
+  for (const mode of ["preview", "exchange"]) {
+    const calls = [];
+    const result = await resolveConnectLinkUrl(rawUrl, {
+      mode,
+      schemes: cvcSchemes,
+      publicKeys,
+      nowEpochSeconds: NOW,
+      fetcher: (url, init) => {
+        calls.push({ url, init });
+        return Promise.resolve(Response.json({ claims: expected }));
+      },
+    });
+    assert.equal(result.ok, true, mode);
+    assert.equal(result.transport, "exchange", mode);
+    assert.equal(calls.length, 1, mode);
+    assert.equal(calls[0].url, `${apiBaseUrl}/v1/install-connect/${mode}`, mode);
+  }
+
+  let foreignFetches = 0;
+  const foreign = await resolveConnectLinkUrl(
+    `other-app://connect?code=${code}&apiBaseUrl=${encodeURIComponent(apiBaseUrl)}`,
+    {
+      mode: "preview",
+      schemes: cvcSchemes,
+      publicKeys,
+      fetcher: () => {
+        foreignFetches += 1;
+        return Promise.reject(new Error("foreign scheme must not fetch"));
+      },
+    },
+  );
+  assert.equal(failureOf(foreign).code, "invalid_token");
+  assert.equal(foreignFetches, 0);
 });
 
 test("persists accepted Enterprise activation and branding before applying its icon", async () => {

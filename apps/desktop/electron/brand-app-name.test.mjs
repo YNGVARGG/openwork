@@ -2,6 +2,27 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { applyBrandAppName } from "./brand-app-name.mjs";
+import { CVC_DESKTOP_DISTRIBUTION } from "./desktop-distribution.mjs";
+
+test("CVC ignores organization names on every native name surface", () => {
+  for (const platform of ["win32", "darwin", "linux"]) {
+    const applied = [];
+    const runtimeProcess = { title: "original" };
+    const result = applyBrandAppName("External Organization", {
+      fallbackName: CVC_DESKTOP_DISTRIBUTION.appName,
+      allowCustomAppName: CVC_DESKTOP_DISTRIBUTION.allowCustomAppName,
+      platform,
+      updateElectronAppName: true,
+      runtimeProcess,
+      app: { setName: (name) => applied.push(name) },
+      applicationMenu: { setAppName: (name) => applied.push(name) },
+      window: { setTitle: (name) => applied.push(name) },
+    });
+    assert.equal(result, "CVC Studio");
+    assert.deepEqual(applied, ["CVC Studio", "CVC Studio", "CVC Studio"]);
+    assert.equal(runtimeProcess.title, platform === "darwin" ? "CVC Studio" : "original");
+  }
+});
 
 test("updates the macOS process and Electron application name before rebuilding the native menu", () => {
   const calls = [];
