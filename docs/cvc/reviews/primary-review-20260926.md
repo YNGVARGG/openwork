@@ -14,11 +14,11 @@ The corrected patch is acceptable within this reviewed scope. This is a code-rev
 
 ## Verification
 
-- Expanded `pnpm test:cvc`: 192 passed, 6 existing skips, 0 failures. It now includes browser handoff, connect resolution and native-name regression tests.
+- Expanded `pnpm test:cvc`: 216 passed, 7 existing skips, 0 failures. It now includes browser handoff, connect resolution and native-name regression tests.
 - Isolated renderer identity/deep-link tests: 2 passed, 12 assertions.
 - UI TypeScript check: passed.
 - Production CVC renderer build: passed with the existing large-chunk warnings.
-- Existing workspace-store tests were independently run in both the original foundation checkout and corrected audit checkout. They fail in both; those baseline bootstrap-resolution failures are not repaired or concealed by this patch.
+- Diagnosed the eight workspace-store failures: the fixture changed HOME but not USERPROFILE, so Windows used the real profile. The fixture now isolates both variables, asserts os.homedir() before importing the store, and restores both afterward. The suite passes: 24 passed, 1 platform skip. Earlier runs may have touched profile files; existing profile contents were left unchanged.
 - No signed installer, real installed protocol handoff or macOS/Linux runtime smoke test was performed.
 
-Remaining follow-up: inspect the baseline workspace-bootstrap failures before project persistence is wired into that layer. The native rebuild fallback also needs a target-platform check when node-pty requires rebuilding; the current prebuilt probe alone does not establish that fallback works.
+Remaining follow-up: the native rebuild fallback also needs a target-platform check when node-pty requires rebuilding; the current prebuilt probe alone does not establish that fallback works.

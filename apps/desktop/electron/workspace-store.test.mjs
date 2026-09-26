@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { chmod, mkdtemp, mkdir, readFile, realpath, utimes, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
@@ -21,16 +21,19 @@ async function withIsolatedBootstrapStore(callback) {
   const home = path.join(root, "home");
   const xdg = path.join(root, "xdg");
   const previousHome = process.env.HOME;
+  const previousUserProfile = process.env.USERPROFILE;
   const previousXdg = process.env.XDG_CONFIG_HOME;
   const previousOverride = process.env.OPENWORK_DESKTOP_BOOTSTRAP_PATH;
   const previousDevMode = process.env.OPENWORK_DEV_MODE;
 
   process.env.HOME = home;
+  process.env.USERPROFILE = home;
   process.env.XDG_CONFIG_HOME = xdg;
   delete process.env.OPENWORK_DESKTOP_BOOTSTRAP_PATH;
   delete process.env.OPENWORK_DEV_MODE;
 
   try {
+    assert.equal(path.resolve(homedir()), path.resolve(home), "bootstrap tests must never use the real user home");
     const module = await import(`./workspace-store.mjs?bootstrap-test=${Date.now()}-${Math.random()}`);
     const createStore = (overrides = {}) => module.createWorkspaceStore({
       app: { getPath: (name) => name === "userData" ? path.join(root, "userData") : root },
@@ -50,6 +53,7 @@ async function withIsolatedBootstrapStore(callback) {
     });
   } finally {
     restoreEnv("HOME", previousHome);
+    restoreEnv("USERPROFILE", previousUserProfile);
     restoreEnv("XDG_CONFIG_HOME", previousXdg);
     restoreEnv("OPENWORK_DESKTOP_BOOTSTRAP_PATH", previousOverride);
     restoreEnv("OPENWORK_DEV_MODE", previousDevMode);
