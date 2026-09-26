@@ -451,6 +451,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@cvc/room-study':
+        specifier: workspace:*
+        version: link:../../packages/cvc-room-study
       '@ai-sdk/provider':
         specifier: 3.0.12
         version: 3.0.12

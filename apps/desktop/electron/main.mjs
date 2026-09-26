@@ -127,6 +127,8 @@ const DESKTOP_DISTRIBUTION = resolveDesktopDistribution({
   packageFlavor: Reflect.get(desktopPackageMetadata, "openworkDistribution"),
   environmentFlavor: process.env.OPENWORK_DESKTOP_DISTRIBUTION,
 });
+// Packaged identity is authoritative; inherited shell flags cannot enable CVC in another distribution.
+process.env.OPENWORK_CVC_ENABLED = DESKTOP_DISTRIBUTION.flavor === "cvc" ? "1" : "0";
 const TAURI_APP_IDENTIFIER = DESKTOP_DISTRIBUTION.appIdentifier;
 const DEV_APP_IDENTIFIER = `${DESKTOP_DISTRIBUTION.appIdentifier}.dev`;
 const DESKTOP_PROTOCOL_SCHEME = DESKTOP_DISTRIBUTION.protocolScheme;

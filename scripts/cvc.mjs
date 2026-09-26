@@ -6,6 +6,7 @@ import path from "node:path";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cvcEnvironment = Object.freeze({
   OPENWORK_DESKTOP_DISTRIBUTION: "cvc",
+  OPENWORK_CVC_ENABLED: "1",
   OPENWORK_ELECTRON_APP_NAME: "CVC Studio",
   OPENWORK_ELECTRON_APP_IDENTIFIER: "local.cvc.studio",
   OPENWORK_ELECTRON_PROTOCOL_SCHEME: "cvc-studio",

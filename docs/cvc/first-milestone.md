@@ -1,8 +1,8 @@
 # First milestone: one room, one traceable winter study
 
-Status: selected by the user on 2026-09-26; not yet an implemented feature or a validated calculation method.
+Status: contracts, calculation, local persistence, comparison, HTML export and agent tools implemented and tested. Live assistant acceptance and the focused study panel remain outstanding.
 
-Current implementation: [`@cvc/room-study`](../../packages/cvc-room-study/README.md) provides input/result contracts, validation, a deterministic calculator and synthetic fixtures. The [reference case](room-heat-loss-reference.md) checks baseline 770 W and revised 910.5 W arithmetic. Persistence, agent tools, report export and UI integration remain unimplemented.
+Current implementation: [`@cvc/room-study`](../../packages/cvc-room-study/README.md) includes the complete saved-study service. The [reference case](room-heat-loss-reference.md) checks baseline 770 W and revised 910.5 W arithmetic. Tool integration tests exercise missing inputs, two saved revisions, comparison, export and reopening through a new plugin instance. This does not establish a complete live desktop conversation or regulatory validation.
 
 ## User outcome
 

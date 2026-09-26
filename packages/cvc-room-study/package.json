@@ -4,12 +4,38 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./calculator": "./src/calculator.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./calculator": {
+      "types": "./dist/calculator.d.ts",
+      "bun": "./src/calculator.ts",
+      "default": "./dist/calculator.js"
+    },
+    "./store": {
+      "types": "./dist/store.d.ts",
+      "bun": "./src/store.ts",
+      "default": "./dist/store.js"
+    },
+    "./report": {
+      "types": "./dist/report.d.ts",
+      "bun": "./src/report.ts",
+      "default": "./dist/report.js"
+    },
+    "./run-verification": {
+      "types": "./dist/run-verification.d.ts",
+      "bun": "./src/run-verification.ts",
+      "default": "./dist/run-verification.js"
+    }
   },
   "scripts": {
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json"
   },
-  "dependencies": { "zod": "4.3.6" }
+  "dependencies": {
+    "zod": "4.3.6"
+  }
 }
