@@ -9,6 +9,7 @@ const MAX_APP_NAME_LENGTH = 64;
  * @param {unknown} requestedName
  * @param {{
  *   fallbackName: string,
+ *   allowCustomAppName?: boolean,
  *   platform: string,
  *   updateElectronAppName: boolean,
  *   runtimeProcess: { title: string },
@@ -18,7 +19,9 @@ const MAX_APP_NAME_LENGTH = 64;
  * }} dependencies
  */
 export function applyBrandAppName(requestedName, dependencies) {
-  const requested = requestedName === null ? "" : String(requestedName ?? "").trim();
+  const requested = dependencies.allowCustomAppName === false || requestedName === null
+    ? ""
+    : String(requestedName ?? "").trim();
   const appName = requested.slice(0, MAX_APP_NAME_LENGTH) || dependencies.fallbackName;
 
   if (dependencies.platform === "darwin") {

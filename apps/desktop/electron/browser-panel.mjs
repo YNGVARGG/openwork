@@ -42,7 +42,27 @@ const BROWSER_SECURITY_PREFERENCES = Object.freeze({
   webviewTag: false,
 });
 
-export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, checkPolicy, showNativeContextMenu, closeNativeContextMenu }) {
+// Upstream OpenWork deep links. A distribution with its own registered
+// protocol scheme (see DESKTOP_PROTOCOL_SCHEME) passes it in so an in-app
+// browser handoff works for the scheme the operating system actually routes
+// back to this application.
+const DEFAULT_DEEP_LINK_PROTOCOLS = Object.freeze(["openwork:", "openwork-dev:"]);
+
+/**
+ * @param {string} target
+ * @param {readonly string[]} protocols
+ * @returns {boolean}
+ */
+function isDeepLinkTarget(target, protocols) {
+  const normalized = String(target ?? "").toLowerCase();
+  return protocols.some((protocol) => {
+    const candidate = String(protocol ?? "").trim().toLowerCase();
+    if (!candidate) return false;
+    return normalized.startsWith(candidate.endsWith(":") ? `${candidate}//` : `${candidate}://`);
+  });
+}
+
+export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, checkPolicy, showNativeContextMenu, closeNativeContextMenu, deepLinkProtocols = DEFAULT_DEEP_LINK_PROTOCOLS }) {
   let browserSessionHooksInstalled = false;
   function installBrowserSessionHooks() {
     if (browserSessionHooksInstalled) return;
@@ -812,9 +832,10 @@ export function createBrowserPanel({ getWindow, remoteDebugPort, onDeepLink, che
       // data: loads are internal plumbing (CDP target-marker pages), not
       // user-visible navigations — don't surface the panel for them.
       if (target === "about:blank" || target.startsWith("data:")) return;
-      // Intercept openwork:// deep links (e.g. den-auth handoff grants) so
-      // in-app browser auth works without the system protocol handler.
-      if (target.startsWith("openwork://") || target.startsWith("openwork-dev://")) {
+      // Intercept this distribution's deep links (e.g. den-auth handoff
+      // grants) so in-app browser auth works without the system protocol
+      // handler.
+      if (isDeepLinkTarget(target, deepLinkProtocols)) {
         if (typeof onDeepLink === "function") {
           onDeepLink([target]);
         }

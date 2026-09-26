@@ -63,6 +63,12 @@ test("CVC argument parsing allows only a mode and --dry-run", () => {
   assert.throws(() => parseArgs(["unknown"]), /Usage:/);
 });
 
+test("CVC argument parsing ignores Object.prototype keys as modes", () => {
+  for (const mode of ["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__"]) {
+    assert.throws(() => parseArgs([mode]), /Usage:/, mode);
+  }
+});
+
 test("CVC package routing uses the dedicated builder config and never publishes", () => {
   const packageArgs = commands.package.flat();
   assert.deepEqual(commands.package[0], ["--filter", "@openwork/desktop", "build:electron"]);

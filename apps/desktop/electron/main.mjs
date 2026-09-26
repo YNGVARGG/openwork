@@ -46,9 +46,7 @@ import {
 } from "./nuke.mjs";
 import {
   createConnectLinkReplayGuard,
-  extractConnectExchange,
-  resolveConnectExchangeUrl,
-  verifyConnectLinkUrl,
+  resolveConnectLinkUrl,
 } from "./connect-link.mjs";
 import {
   applyDesktopBootstrapBrandIcon,
@@ -130,6 +128,16 @@ const DESKTOP_DISTRIBUTION = resolveDesktopDistribution({
 const TAURI_APP_IDENTIFIER = DESKTOP_DISTRIBUTION.appIdentifier;
 const DEV_APP_IDENTIFIER = `${DESKTOP_DISTRIBUTION.appIdentifier}.dev`;
 const DESKTOP_PROTOCOL_SCHEME = DESKTOP_DISTRIBUTION.protocolScheme;
+// Deep links reach the queue either from this distribution's registered
+// protocol handler or, in an unpackaged dev run, from the shared openwork-dev
+// scheme. Every deep-link parser accepts exactly this set, so a distribution
+// with its own scheme (CVC Studio) is not filtered out after the OS handed the
+// URL over.
+const DEEP_LINK_PROTOCOLS = Object.freeze(
+  app.isPackaged
+    ? [`${DESKTOP_PROTOCOL_SCHEME}:`]
+    : [`${DESKTOP_PROTOCOL_SCHEME}:`, "openwork-dev:"],
+);
 const DEFAULT_APP_NAME =
   (!app.isPackaged ? process.env.OPENWORK_ELECTRON_APP_NAME?.trim() : "") ||
   (isDevMode ? `${DESKTOP_DISTRIBUTION.appName} - Dev` : DESKTOP_DISTRIBUTION.appName);
@@ -1114,6 +1122,7 @@ browserPanel = createBrowserPanel({
   remoteDebugPort,
   getWindow: () => mainWindow,
   onDeepLink: (urls) => queueDeepLinks(urls),
+  deepLinkProtocols: DEEP_LINK_PROTOCOLS,
   checkPolicy: async (input) => {
     if (!DESKTOP_POLICY_ENFORCEMENT_ENABLED) return;
     let code = "policy_unavailable";
@@ -1169,12 +1178,11 @@ const connectLinkReplayGuard = createConnectLinkReplayGuard({
   filePath: path.join(app.getPath("userData"), "connect-link-seen.json"),
 });
 
-/**
- * @param {string} rawUrl
- * @returns {import("@openwork/types/connect-link").ConnectLinkVerifyResult}
- */
-function verifyConnectLink(rawUrl) {
-  return verifyConnectLinkUrl(String(rawUrl ?? ""), {
+async function resolveDesktopConnectLink(rawUrl, mode) {
+  return resolveConnectLinkUrl(String(rawUrl ?? ""), {
+    mode,
+    schemes: DEEP_LINK_PROTOCOLS,
+    fetcher: electronNet.fetch,
     publicKeys: resolveConnectLinkPublicKeys(),
     // http is refused everywhere except loopback targets in dev runs.
     allowInsecureLoopback: isDevMode,
@@ -1182,25 +1190,11 @@ function verifyConnectLink(rawUrl) {
 }
 
 async function previewConnectLink(rawUrl) {
-  if (extractConnectExchange(rawUrl)) {
-    return resolveConnectExchangeUrl(rawUrl, {
-      mode: "preview",
-      fetcher: electronNet.fetch,
-      allowInsecureLoopback: isDevMode,
-    });
-  }
-  return verifyConnectLink(rawUrl);
+  return resolveDesktopConnectLink(rawUrl, "preview");
 }
 
 async function acceptConnectLink(rawUrl) {
-  if (extractConnectExchange(rawUrl)) {
-    return resolveConnectExchangeUrl(rawUrl, {
-      mode: "exchange",
-      fetcher: electronNet.fetch,
-      allowInsecureLoopback: isDevMode,
-    });
-  }
-  return verifyConnectLink(rawUrl);
+  return resolveDesktopConnectLink(rawUrl, "exchange");
 }
 
 async function persistConnectLinkClaims(claims) {
@@ -1241,8 +1235,7 @@ function forwardedDeepLinks(argv) {
     .map((entry) => entry.trim())
     .filter(
       (entry) =>
-        entry.startsWith(`${DESKTOP_PROTOCOL_SCHEME}://`) ||
-        (!app.isPackaged && entry.startsWith("openwork-dev://")) ||
+        DEEP_LINK_PROTOCOLS.some((protocol) => entry.startsWith(`${protocol}//`)) ||
         entry.startsWith("https://") ||
         entry.startsWith("http://"),
     );
@@ -2298,6 +2291,7 @@ const desktopCommandHandlers = {
       BLANK_SLATE_LAUNCH.enabled || DESKTOP_DISTRIBUTION.flavor === "enterprise" ? null : args[0],
       {
       fallbackName: APP_NAME,
+      allowCustomAppName: DESKTOP_DISTRIBUTION.allowCustomAppName,
       platform: process.platform,
       updateElectronAppName: process.platform === "darwin",
       runtimeProcess: process,
@@ -2959,6 +2953,7 @@ or use: pnpm dev:worktree`);
         : bootstrapConfig.brandAppName,
       {
       fallbackName: APP_NAME,
+      allowCustomAppName: DESKTOP_DISTRIBUTION.allowCustomAppName,
       platform: process.platform,
       updateElectronAppName: true,
       runtimeProcess: process,

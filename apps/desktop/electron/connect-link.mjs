@@ -143,15 +143,44 @@ function normalizeClaims(payload) {
   };
 }
 
+// Upstream OpenWork deep links. A distribution that registers its own
+// protocol scheme (see DESKTOP_PROTOCOL_SCHEME) passes it in, so the parser
+// accepts exactly the scheme the operating system was told to hand over.
+const DEFAULT_CONNECT_LINK_SCHEMES = Object.freeze(["openwork:", "openwork-dev:"]);
+
+/**
+ * @param {string} protocol
+ * @param {readonly string[]} schemes
+ * @returns {boolean}
+ */
+function isConnectLinkProtocol(protocol, schemes) {
+  const normalized = String(protocol ?? "").toLowerCase();
+  return schemes.some((scheme) => {
+    const candidate = String(scheme ?? "").trim().toLowerCase();
+    if (!candidate) return false;
+    return normalized === (candidate.endsWith(":") ? candidate : `${candidate}:`);
+  });
+}
+
+/**
+ * @param {{ schemes?: readonly string[] } | undefined} options
+ * @returns {readonly string[]}
+ */
+function connectLinkSchemes(options) {
+  const requested = options?.schemes;
+  return Array.isArray(requested) && requested.length > 0 ? requested : DEFAULT_CONNECT_LINK_SCHEMES;
+}
+
 /**
  * Extracts the signed token from a connect deep link. Accepts the openwork
- * and openwork-dev schemes and both authority forms (openwork://connect and
- * openwork:///connect).
+ * and openwork-dev schemes, plus any scheme the caller names, and both
+ * authority forms (openwork://connect and openwork:///connect).
  *
  * @param {string} rawUrl
+ * @param {{ schemes?: readonly string[] }} [options]
  * @returns {string | null}
  */
-export function extractConnectLinkToken(rawUrl) {
+export function extractConnectLinkToken(rawUrl, options) {
   if (typeof rawUrl !== "string" || !rawUrl.trim()) return null;
   let parsed;
   try {
@@ -159,7 +188,7 @@ export function extractConnectLinkToken(rawUrl) {
   } catch {
     return null;
   }
-  if (parsed.protocol !== "openwork:" && parsed.protocol !== "openwork-dev:") return null;
+  if (!isConnectLinkProtocol(parsed.protocol, connectLinkSchemes(options))) return null;
   const route = (parsed.hostname || parsed.pathname.replace(/^\/+|\/+$/g, "")).toLowerCase();
   if (route !== CONNECT_LINK_ROUTE) return null;
   if (parsed.searchParams.has("code") || parsed.searchParams.has("apiBaseUrl")) return null;
@@ -169,9 +198,10 @@ export function extractConnectLinkToken(rawUrl) {
 
 /**
  * @param {string} rawUrl
+ * @param {{ schemes?: readonly string[] }} [options]
  * @returns {{ code: string, apiBaseUrl: string } | null}
  */
-export function extractConnectExchange(rawUrl) {
+export function extractConnectExchange(rawUrl, options) {
   if (typeof rawUrl !== "string" || !rawUrl.trim()) return null;
   let parsed;
   try {
@@ -179,7 +209,7 @@ export function extractConnectExchange(rawUrl) {
   } catch {
     return null;
   }
-  if (parsed.protocol !== "openwork:" && parsed.protocol !== "openwork-dev:") return null;
+  if (!isConnectLinkProtocol(parsed.protocol, connectLinkSchemes(options))) return null;
   const route = (parsed.hostname || parsed.pathname.replace(/^\/+|\/+$/g, "")).toLowerCase();
   if (route !== CONNECT_LINK_ROUTE || parsed.searchParams.has("token")) return null;
   const code = parsed.searchParams.get("code")?.trim() ?? "";
@@ -303,11 +333,12 @@ export function verifyConnectLinkToken(input) {
  *   publicKeys: Record<string, string>,
  *   nowEpochSeconds?: number,
  *   allowInsecureLoopback?: boolean,
+ *   schemes?: readonly string[],
  * }} options
  * @returns {import("@openwork/types/connect-link").ConnectLinkVerifyResult}
  */
 export function verifyConnectLinkUrl(rawUrl, options) {
-  const token = extractConnectLinkToken(rawUrl);
+  const token = extractConnectLinkToken(rawUrl, { schemes: options.schemes });
   if (!token) {
     return { ok: false, code: "invalid_token", message: "Not a connect deep link." };
   }
@@ -326,11 +357,12 @@ export function verifyConnectLinkUrl(rawUrl, options) {
  *   fetcher: (url: string, init: object) => Promise<Response>,
  *   nowEpochSeconds?: number,
  *   allowInsecureLoopback?: boolean,
+ *   schemes?: readonly string[],
  * }} options
  * @returns {Promise<import("@openwork/types/connect-link").ConnectLinkVerifyResult>}
  */
 export async function resolveConnectExchangeUrl(rawUrl, options) {
-  const exchange = extractConnectExchange(rawUrl);
+  const exchange = extractConnectExchange(rawUrl, { schemes: options.schemes });
   if (!exchange) {
     return { ok: false, code: "invalid_token", message: "Not a keyless connect deep link." };
   }
@@ -405,6 +437,30 @@ export async function resolveConnectExchangeUrl(rawUrl, options) {
   }
 
   return { ok: true, claims, transport: "exchange", kid: null };
+}
+
+/**
+ * Resolves either a signed connect link or a keyless exchange link. The
+ * caller supplies one scheme set for both classification and resolution, so a
+ * distribution-specific protocol cannot be accepted by one step and refused
+ * by the next.
+ *
+ * @param {string} rawUrl
+ * @param {{
+ *   mode: "preview" | "exchange",
+ *   fetcher: (url: string, init: object) => Promise<Response>,
+ *   publicKeys: Record<string, string>,
+ *   nowEpochSeconds?: number,
+ *   allowInsecureLoopback?: boolean,
+ *   schemes?: readonly string[],
+ * }} options
+ * @returns {Promise<import("@openwork/types/connect-link").ConnectLinkVerifyResult>}
+ */
+export async function resolveConnectLinkUrl(rawUrl, options) {
+  if (extractConnectExchange(rawUrl, { schemes: options.schemes })) {
+    return resolveConnectExchangeUrl(rawUrl, options);
+  }
+  return verifyConnectLinkUrl(rawUrl, options);
 }
 
 /**

@@ -59,7 +59,9 @@ function parseArgs(argv) {
   const dryRun = rest.includes("--dry-run");
   const unknown = rest.filter((argument) => argument !== "--dry-run");
 
-  if (!commands[mode] || unknown.length > 0) {
+  // Own properties only: "constructor", "toString" and "__proto__" are truthy
+  // on the prototype chain and would otherwise pass as valid modes.
+  if (!Object.hasOwn(commands, mode) || unknown.length > 0) {
     throw new Error(
       "Usage: node scripts/cvc.mjs <dev|build-ui|preview|package> [--dry-run]",
     );
