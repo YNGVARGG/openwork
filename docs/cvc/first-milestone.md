@@ -2,6 +2,8 @@
 
 Status: selected by the user on 2026-09-26; not yet an implemented feature or a validated calculation method.
 
+First coding deliverable: [`@cvc/room-study`](../../packages/cvc-room-study/README.md) now defines input/result contracts, validation and synthetic fixtures. The [reference case](room-heat-loss-reference.md) checks baseline 770 W and revised 910.5 W arithmetic. This does not yet implement the production calculation adapter or any of the persistence/UI workflow below.
+
 ## User outcome
 
 A BTS FED user opens a project and asks, in French: « Aide-moi à établir les déperditions hivernales de cette pièce et une note de calcul vérifiable. » The assistant gathers missing data, runs a deterministic calculation, explains each contribution and exports a calculation note. The saved study remains usable after restarting the app or opening another conversation.
