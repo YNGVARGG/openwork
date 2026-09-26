@@ -1,3 +1,4 @@
+import { CVC_STUDIO_PROTOCOL_SCHEME, isCvcStudioBuild } from "./cvc-studio";
 import { DEFAULT_DEN_BASE_URL, normalizeDenBaseUrl } from "./den";
 import { normalizeOpenworkServerUrl } from "./openwork-server";
 
@@ -32,10 +33,25 @@ export type ChatDeepLink = {
 const CHAT_DEEP_LINK_PROMPT_MAX_LENGTH = 4000;
 const CHAT_DEEP_LINK_CONNECTOR_MAX_LENGTH = 80;
 
+/**
+ * Schemes the operating system routes to this desktop build. CVC Studio ships
+ * its own installer protocol, so its renderer must accept the same scheme the
+ * main process accepts (see DEEP_LINK_PROTOCOLS in electron/main.mjs).
+ */
+const DESKTOP_DEEP_LINK_PROTOCOLS: readonly string[] = Object.freeze([
+  "openwork:",
+  "openwork-dev:",
+  ...(isCvcStudioBuild ? [`${CVC_STUDIO_PROTOCOL_SCHEME}:`] : []),
+]);
+
+function isDesktopDeepLinkProtocol(protocol: string): boolean {
+  const normalized = protocol.toLowerCase();
+  return DESKTOP_DEEP_LINK_PROTOCOLS.some((candidate) => candidate === normalized);
+}
+
 function isSupportedDeepLinkProtocol(protocol: string): boolean {
   const normalized = protocol.toLowerCase();
-  return normalized === "openwork:"
-    || normalized === "openwork-dev:"
+  return isDesktopDeepLinkProtocol(normalized)
     || normalized === "https:"
     || normalized === "http:";
 }
@@ -167,7 +183,7 @@ export function parseConnectDeepLink(rawUrl: string): ConnectDeepLink | null {
   // Unlike sibling parsers, organization connect credentials only ride the
   // dedicated desktop scheme, never ordinary web URLs.
   const protocol = url.protocol.toLowerCase();
-  if (protocol !== "openwork:" && protocol !== "openwork-dev:") {
+  if (!isDesktopDeepLinkProtocol(protocol)) {
     return null;
   }
 
@@ -202,7 +218,7 @@ export function parseChatDeepLink(rawUrl: string): ChatDeepLink | null {
   // Chat seeding is a desktop handoff from Den; ordinary web URLs never
   // pre-fill the composer.
   const protocol = url.protocol.toLowerCase();
-  if (protocol !== "openwork:" && protocol !== "openwork-dev:") {
+  if (!isDesktopDeepLinkProtocol(protocol)) {
     return null;
   }
 
