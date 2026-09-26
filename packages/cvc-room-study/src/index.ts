@@ -35,6 +35,27 @@ const bridge = z.strictObject({
   length: quantity("m", positive),
 });
 
+/** Compensated area sum, with only a floating-point rounding allowance.
+ * This is not a measurement tolerance and must not hide oversized openings.
+ */
+export function netOpaqueAreaM2(grossArea: number, openingAreas: readonly number[]): number {
+  if (!Number.isFinite(grossArea) || grossArea <= 0) throw new Error("Invalid gross area");
+  let sum = 0;
+  let compensation = 0;
+  for (const area of openingAreas) {
+    if (!Number.isFinite(area) || area <= 0) throw new Error("Invalid opening area");
+    const corrected = area - compensation;
+    const next = sum + corrected;
+    compensation = (next - sum) - corrected;
+    sum = next;
+  }
+  if (!Number.isFinite(sum)) throw new Error("Opening area overflow");
+  const net = grossArea - sum;
+  const roundingAllowance = 16 * Number.EPSILON * Math.max(grossArea, sum);
+  if (net < -roundingAllowance) throw new Error("Openings exceed gross area");
+  return Math.max(0, net);
+}
+
 /** Ready-to-calculate input. Drafts stay untrusted until this schema succeeds. */
 export const roomStudyInputSchema = z.strictObject({
   schemaVersion: z.literal(1),
@@ -76,7 +97,9 @@ export const roomStudyInputSchema = z.strictObject({
     unique(item.id, ["surfaces", index, "id"]);
     if (!boundaries.has(item.boundaryId)) ctx.addIssue({ code: "custom", path: ["surfaces", index, "boundaryId"], message: "Condition de temperature introuvable." });
     item.openings.forEach((window, openingIndex) => unique(window.id, ["surfaces", index, "openings", openingIndex, "id"]));
-    if (item.openings.reduce((sum, window) => sum + window.area.value, 0) > item.grossArea.value) {
+    try {
+      netOpaqueAreaM2(item.grossArea.value, item.openings.map((window) => window.area.value));
+    } catch {
       ctx.addIssue({ code: "custom", path: ["surfaces", index, "openings"], message: "La surface des ouvertures dépasse la surface brute de la paroi." });
     }
   });
@@ -141,7 +164,8 @@ export const roomStudyRunSchema = z.strictObject({
   }),
   contributions: z.array(contribution).min(1),
   totals: z.strictObject({ transmissionW: nonnegative, thermalBridgesW: nonnegative, airExchangeW: nonnegative, heatLossW: nonnegative }),
-  warnings: z.array(text),
+  // Includes a prefix around a source reason (which may itself be 2000 chars).
+  warnings: z.array(z.string().trim().min(1).max(4096)),
   applicability: z.literal("preliminary-study-not-regulatory-sizing"),
 }).superRefine((run, ctx) => {
   const expected = new Set<string>(["air-exchange:air-exchange"]);

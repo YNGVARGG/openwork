@@ -2,7 +2,7 @@
 
 Status: selected by the user on 2026-09-26; not yet an implemented feature or a validated calculation method.
 
-First coding deliverable: [`@cvc/room-study`](../../packages/cvc-room-study/README.md) now defines input/result contracts, validation and synthetic fixtures. The [reference case](room-heat-loss-reference.md) checks baseline 770 W and revised 910.5 W arithmetic. This does not yet implement the production calculation adapter or any of the persistence/UI workflow below.
+Current implementation: [`@cvc/room-study`](../../packages/cvc-room-study/README.md) provides input/result contracts, validation, a deterministic calculator and synthetic fixtures. The [reference case](room-heat-loss-reference.md) checks baseline 770 W and revised 910.5 W arithmetic. Persistence, agent tools, report export and UI integration remain unimplemented.
 
 ## User outcome
 

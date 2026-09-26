@@ -1,6 +1,6 @@
 # @cvc/room-study
 
-Versioned contracts and synthetic reference fixtures for a one-room preliminary winter heat-loss study. No production calculator, persistence, agent tools or UI are implemented in this package yet.
+Versioned contracts, a deterministic calculator and synthetic reference fixtures for a one-room preliminary winter heat-loss study. Persistence, agent tools and UI are not implemented yet.
 
 ## Contract boundary
 
@@ -18,11 +18,15 @@ Air flow is the combined declared outdoor-air flow in m3/h, including any infilt
 
 The [reference note](../../docs/cvc/room-heat-loss-reference.md) states method sources, exclusions, hand arithmetic and test tolerances. JSON fixtures are synthetic, not defaults. The baseline is **770 W**. Changing shared outdoor temperature from -5 to -10 degC gives **910.5 W**, an increase of **140.5 W**.
 
-Tests independently evaluate fixture arithmetic; that helper is deliberately test-only. It is not a second production engine. Later adapter tests must run the actual calculator against these frozen expected contributions.
+Contract tests independently evaluate fixture arithmetic with a test-only helper. Calculator tests additionally execute the production implementation against every frozen expected contribution and exercise changes, exclusions, invalid inputs, detached snapshots and arithmetic overflow.
+
+Import `calculateRoomStudy` from `@cvc/room-study/calculator`. Pass untrusted input and an explicit `{ runId, createdAt }` identity; the caller owns identity creation. The function validates inputs and output, performs no I/O and uses no model, clock or random state. It returns a detached input snapshot, trace, full-precision totals and warnings. This is not a persistence or immutability guarantee; a future run service must supply those.
+
+The calculator implements the narrow reviewed equations directly. Importing the old residential load orchestration would bring incompatible single-temperature, cooling and airflow conventions; no legacy code or dependency has been copied. U-value calculation from construction layers remains a candidate for later reuse.
 
 ```text
 pnpm test:cvc:room
 pnpm typecheck:cvc:room
 ```
 
-Next implementation: review/import the smallest suitable legacy coefficient utilities behind a room adapter, then add project revision/run storage. The old whole-building `calculateLoads` cannot be transplanted: it applies a shared outdoor temperature and also calculates cooling. No legacy engine code has been imported in this step.
+Next implementation: project revision/run storage, numerical verification on load, run comparison and report export, followed by agent-tool and UI integration.
