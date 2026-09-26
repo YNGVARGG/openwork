@@ -194,7 +194,7 @@ const RESET_SEQUENCE = [
   { method: "Emulation.clearDeviceMetricsOverride", params: undefined },
 ];
 
-function createPanel(checkPolicy = async (_request) => {}, remoteDebugPort = 0) {
+function createPanel(checkPolicy = async (_request) => {}, remoteDebugPort = 0, panelOptions = {}) {
   effects.length = 0;
   controls.focusedContents = null;
   controls.confirm = async () => 0;
@@ -237,7 +237,9 @@ function createPanel(checkPolicy = async (_request) => {}, remoteDebugPort = 0) 
     on(channel, handler) { handlers.set(channel, handler); },
   };
   const panel = createBrowserPanel({
-    getWindow: () => mainWindow, remoteDebugPort, onDeepLink: () => {},
+    getWindow: () => mainWindow, remoteDebugPort,
+    onDeepLink: panelOptions.onDeepLink ?? (() => {}),
+    deepLinkProtocols: panelOptions.deepLinkProtocols,
     checkPolicy: async (request) => { policies.push(request); await checkPolicy(request); },
     showNativeContextMenu: (request) => new Promise((resolve, reject) => {
       menus.push({ request, choose: resolve, fail: reject, closed: false });
@@ -976,6 +978,29 @@ test("focusing a tab's page resets its viewport emulation unless a debugger is a
   await flush();
   assert.deepEqual(commands(view), [], "an existing debugger session is left alone");
   assert.equal(view.webContents.debugger.isAttached(), true);
+});
+
+test("in-app navigation is handed off for the scheme the distribution registers", async () => {
+  const deepLinks = [];
+  const { invoke, onScreen } = createPanel(async () => {}, 0, {
+    deepLinkProtocols: ["cvc-studio:"],
+    onDeepLink: (urls) => deepLinks.push(...urls),
+  });
+  invoke("openwork:browser:show", PANEL_BOUNDS);
+  invoke("openwork:browser:createTab", "https://den.example/install");
+  const contents = onScreen().webContents;
+  await flush();
+
+  contents.emit("did-start-navigation", "cvc-studio://connect?token=a.b.c", false, true);
+  assert.deepEqual(deepLinks, ["cvc-studio://connect?token=a.b.c"]);
+
+  // The handoff clears the tab so the custom-scheme load cannot error.
+  await new Promise((resolve) => setTimeout(resolve, 260));
+  assert.equal(contents.url, "about:blank");
+
+  contents.emit("did-start-navigation", "other-app://connect?token=a.b.c", false, true);
+  await flush();
+  assert.deepEqual(deepLinks, ["cvc-studio://connect?token=a.b.c"], "an unregistered scheme is never handed off");
 });
 
 test("agent navigation that brings a background tab on screen leaves its viewport emulation alone", async () => {
