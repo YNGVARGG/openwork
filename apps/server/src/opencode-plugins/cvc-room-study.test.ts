@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CvcRoomStudy } from "./cvc-room-study.js";
@@ -17,14 +17,14 @@ test("CVC tools complete the saved study, comparison, export and resumed-session
     const tools = plugin.tool;
     const schema = JSON.parse(await tools.cvc_study_schema.execute());
     expect(schema.schema.properties.indoorTemperature).toBeDefined();
-    const missing = JSON.parse(await tools.cvc_revision_save.execute({ projectId: "synthetic-room", input: {}, parentRevisionId: null }, context));
+    const missing = JSON.parse(await tools.cvc_revision_save.execute({ projectId: "synthetic-room", input: {}, parentRevisionId: undefined }, context));
     expect(missing.ready).toBe(false);
     expect(approvals.length).toBe(0);
     expect(await readdir(root)).toEqual([]);
     const baseline = await input();
     const projectId = baseline.projectId;
     await tools.cvc_project_create.execute({ projectId, name: "Pièce synthétique" }, context);
-    await tools.cvc_revision_save.execute({ projectId, input: baseline, parentRevisionId: null }, context);
+    await tools.cvc_revision_save.execute({ projectId, input: baseline, parentRevisionId: undefined }, context);
     const first = JSON.parse(await tools.cvc_calculate.execute({ projectId, revisionId: baseline.revisionId }, context));
     expect(first.totals.heatLossW).toBe(770);
     const changed = structuredClone(baseline);
@@ -77,7 +77,7 @@ test("large successful writes return saved identities instead of a false failure
     }
     const projectId = baseline.projectId;
     await tools.cvc_project_create.execute({ projectId, name: "Large synthetic study" }, context);
-    const revision = JSON.parse(await tools.cvc_revision_save.execute({ projectId, input: baseline, parentRevisionId: null }, context));
+    const revision = JSON.parse(await tools.cvc_revision_save.execute({ projectId, input: baseline, parentRevisionId: undefined }, context));
     expect(revision.truncated).toBe(true);
     expect(revision.revisionId).toBe(baseline.revisionId);
     const run = JSON.parse(await tools.cvc_calculate.execute({ projectId, revisionId: baseline.revisionId }, context));
@@ -85,5 +85,33 @@ test("large successful writes return saved identities instead of a false failure
     expect(typeof run.runId).toBe("string");
     const report = JSON.parse(await tools.cvc_report_export.execute({ projectId, runId: run.runId }, context));
     expect(await readFile(join(root, report.relativePath), "utf8")).toContain(run.runId);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+
+test("file import preserves exact source data and first revision needs no parent argument", async () => {
+  const root = await mkdtemp(join(tmpdir(), "cvc-import-"));
+  try {
+    const approvals: unknown[] = [];
+    const context = { directory: root, ask: async (request: unknown) => { approvals.push(request); } };
+    const tools = (await CvcRoomStudy()).tool;
+    const baseline = await input();
+    const projectId = baseline.projectId;
+    await writeFile(join(root, "piece.json"), JSON.stringify(baseline), "utf8");
+    await tools.cvc_project_create.execute({ projectId, name: "Import reference" }, context);
+    const imported = JSON.parse(await tools.cvc_revision_import.execute({ projectId, relativePath: "piece.json" }, context));
+    expect(imported.parentRevisionId).toBeNull();
+    const saved = JSON.parse(await tools.cvc_revision_read.execute({ projectId, revisionId: baseline.revisionId }, context));
+    expect(saved.input).toEqual(baseline);
+    const run = JSON.parse(await tools.cvc_calculate.execute({ projectId, revisionId: baseline.revisionId }, context));
+    expect(run.totals.heatLossW).toBe(770);
+    expect(approvals).toContainEqual({ permission: "read", patterns: ["piece.json"], always: [], metadata: { action: "Importer les données CVC", relativePath: "piece.json" } });
+    await expect(tools.cvc_revision_import.execute({ projectId, relativePath: "../outside.json" }, context)).rejects.toThrow();
+    await expect(tools.cvc_revision_import.execute({ projectId, relativePath: "piece.json" }, { directory: root, ask: async () => { throw new Error("denied"); } })).rejects.toThrow("denied");
+    const missing = structuredClone(baseline);
+    delete missing.indoorTemperature;
+    await writeFile(join(root, "missing.json"), JSON.stringify(missing), "utf8");
+    expect(JSON.parse(await tools.cvc_revision_import.execute({ projectId, relativePath: "missing.json" }, context)).ready).toBe(false);
+    expect(JSON.parse(await tools.cvc_project_read.execute({ projectId }, context)).revisions.length).toBe(1);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
