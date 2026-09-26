@@ -63,6 +63,8 @@ The review reports distinguish proposed follow-up work from implemented behavior
 
 ## Next acceptance gate
 
+The user selected [single-room winter heat losses](first-milestone.md) as the first complete workflow. The [external bug-review brief](external-bug-review.md) defines a separate audit branch and draft PR process, with primary-agent review before integration.
+
 Before integrating calculation modules, define the first real office task and a
 versioned input/result contract. Compare the old engine against that contract
 using independent reference cases, unit consistency, missing-data behavior,
