@@ -1,4 +1,15 @@
-# OpenWork
+# CVC Studio
+
+A working fork of OpenWork for a French CVC engineering workspace: projects,
+conversations, source documents and reproducible sizing results. The product name
+is provisional. This foundation does not yet include HVAC calculation tools.
+
+See [the fork status and development guide](docs/cvc/README.md). Use the `cvc`
+commands for this product; the upstream commands below still describe OpenWork.
+
+---
+
+## Upstream OpenWork documentation
 
 OpenWork is a free, open-source desktop app made for sharing AI workflows. It is an open-source alternative to Claude Cowork and Codex for macOS, Windows, and Linux.
 

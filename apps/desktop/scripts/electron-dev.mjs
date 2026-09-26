@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import net from "node:net";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +17,23 @@ const defaultDevDataDir = resolve(
 
 const pnpmCmd = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const nodeCmd = process.execPath;
+
+function cvcNativeModulesReady() {
+  if (process.env.OPENWORK_DESKTOP_DISTRIBUTION !== "cvc") return false;
+  try {
+    const electronPath = createRequire(import.meta.url)("electron");
+    const result = spawnSync(electronPath, [resolve(__dirname, "verify-electron-native.cjs")], {
+      cwd: desktopRoot,
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+      encoding: "utf8",
+      timeout: 10_000,
+      windowsHide: true,
+    });
+    return result.status === 0 && result.stdout.includes("cvc-native-ready");
+  } catch {
+    return false;
+  }
+}
 
 async function findFreeTcpPort() {
   return new Promise((resolvePort, rejectPort) => {
@@ -251,7 +269,9 @@ if (!viteReady) {
 }
 
 if (!viteReady) {
-  uiChild = run(pnpmCmd, ["-w", "dev:ui"], {
+  // The environment is passed below; inline POSIX assignments in dev:ui fail
+  // under Windows cmd.exe before Vite can start.
+  uiChild = run(pnpmCmd, ["--filter", "@openwork/app", "exec", "vite"], {
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -266,7 +286,7 @@ const resolvedStartUrl = await waitForVite(startUrl);
 
 // Native dependencies installed for the host Node ABI must be rebuilt before
 // Electron loads the embedded server and terminal runtime.
-if (process.env.OPENWORK_ELECTRON_SKIP_NATIVE_REBUILD === "1") {
+if (process.env.OPENWORK_ELECTRON_SKIP_NATIVE_REBUILD === "1" || cvcNativeModulesReady()) {
   console.log("[electron-dev] Using prebuilt Electron native dependencies.");
 } else {
   console.log("[electron-dev] Rebuilding native dependencies for Electron...");

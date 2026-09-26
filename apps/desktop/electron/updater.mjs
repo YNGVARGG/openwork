@@ -303,6 +303,7 @@ export function registerUpdaterIpc({
   electronNet = null,
   shell = null,
   distribution = "public",
+  updatesEnabled = true,
   platform = process.platform,
   arch = process.arch,
   env = process.env,
@@ -311,6 +312,35 @@ export function registerUpdaterIpc({
   // and the renderer must not be able to check for, stage, or install updates.
   assertActivation = () => {},
 }) {
+  // Independent distributions must not resolve, stage, or recover upstream installers.
+  // Keep the bridge callable so older renderer surfaces receive an explicit refusal.
+  if (!updatesEnabled) {
+    const unavailable = () => ({
+      ok: false,
+      available: false,
+      supported: false,
+      reason: "Updates are not configured for this distribution.",
+      totalBytes: null,
+      channel: "stable",
+      canSwitch: false,
+      releases: [],
+    });
+    for (const channel of [
+      "openwork:recovery:recordHealthy",
+      "openwork:recovery:list",
+      "openwork:recovery:use",
+      "openwork:recovery:restorePrevious",
+      "openwork:recovery:evalSnapshot",
+      "openwork:updater:getChannel",
+      "openwork:updater:setChannel",
+      "openwork:updater:check",
+      "openwork:updater:download",
+      "openwork:updater:installAndRestart",
+    ]) {
+      ipcMain.handle(channel, async () => unavailable());
+    }
+    return { ensureAutoUpdater: async () => null };
+  }
   let autoUpdaterInstance = null;
   let autoUpdaterLoadPromise = null;
   let checkedUpdateVersion = null;

@@ -71,4 +71,24 @@ describe("Electron distribution configs", () => {
       "openwork-cloud-${os}-${arch}-${version}.${ext}",
     );
   });
+
+  it("defines an independent CVC Studio artifact without a publish target", async () => {
+    const config = await readConfig("electron-builder.cvc.yml");
+    assert.equal(config.extends, "./electron-builder.base.yml");
+    assert.equal(config.appId, "local.cvc.studio");
+    assert.equal(config.productName, "CVC Studio");
+    assert.equal(config.extraMetadata.openworkDistribution, "cvc");
+    assert.equal(config.extraMetadata.desktopName, "local.cvc.studio");
+    assert.equal(config.protocols[0].schemes[0], "cvc-studio");
+    assert.equal(config.publish, null);
+    assert.equal(config.linux.executableName, "cvc-studio");
+    assert.equal(config.nsis.include, "build/installer.cvc.nsh");
+    const uninstall = await readFile(path.resolve(dirname, "..", config.nsis.include), "utf8");
+    assert.ok(uninstall.includes("local.cvc.studio"));
+    assert.ok(!uninstall.includes("com.differentai.openwork"));
+    assert.equal(
+      config.artifactName,
+      "cvc-studio-${os}-${arch}-${version}.${ext}",
+    );
+  });
 });

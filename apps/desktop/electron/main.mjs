@@ -406,7 +406,8 @@ async function resolveArchitectureInfo() {
   // match the machine; a matching install never shows a download, so it must
   // not contact the release host (an unactivated enterprise install in
   // particular has no business reaching anything before its Den is known).
-  const latestDownloadUrl = appArch === systemArch ? null : await resolveCorrectArchitectureDownloadUrl(targetArch);
+  const updatesEnabled = DESKTOP_DISTRIBUTION.updatesEnabled !== false;
+  const latestDownloadUrl = !updatesEnabled || appArch === systemArch ? null : await resolveCorrectArchitectureDownloadUrl(targetArch);
   const hasCorrectArchitectureDownload = Boolean(latestDownloadUrl);
   return {
     appArch,
@@ -416,8 +417,8 @@ async function resolveArchitectureInfo() {
     mismatch: appArch !== systemArch && hasCorrectArchitectureDownload,
     platform: process.platform === "win32" ? "windows" : process.platform,
     version,
-    downloadUrl: latestDownloadUrl || `${RELEASE_DOWNLOAD_BASE_URL}/${assetName}`,
-    releaseUrl: RELEASE_PAGE_URL,
+    downloadUrl: updatesEnabled ? latestDownloadUrl || `${RELEASE_DOWNLOAD_BASE_URL}/${assetName}` : "",
+    releaseUrl: updatesEnabled ? RELEASE_PAGE_URL : "",
   };
 }
 
@@ -2059,6 +2060,7 @@ const desktopCommandHandlers = {
       return { ok: true, config };
   },
   "nukeOpenworkAndOpencodeConfigPreview": async (event, ...args) => {
+      if (DESKTOP_DISTRIBUTION.flavor === "cvc") throw new Error("Shared OpenWork cleanup is unavailable in CVC Studio.");
       return buildNukeManifest({
         env: process.env,
         homedir: os.homedir(),
@@ -2069,6 +2071,7 @@ const desktopCommandHandlers = {
       });
   },
   "nukeOpenworkAndOpencodeConfigAndExit": async (event, ...args) => {
+      if (DESKTOP_DISTRIBUTION.flavor === "cvc") throw new Error("Shared OpenWork cleanup is unavailable in CVC Studio.");
       return executeNukeFreshStart({
         app,
         session,
@@ -2087,6 +2090,7 @@ const desktopCommandHandlers = {
       });
   },
   "sandboxCleanupOpenworkContainers": async (event, ...args) => {
+      if (DESKTOP_DISTRIBUTION.flavor === "cvc") throw new Error("Shared OpenWork cleanup is unavailable in CVC Studio.");
       return runtimeManager.sandboxCleanupOpenworkContainers();
   },
   "openworkServerInfo": async (event, ...args) => {
@@ -2204,8 +2208,8 @@ const desktopCommandHandlers = {
   "updaterEnvironment": async (event, ...args) => {
       const executablePath = app.isPackaged ? app.getPath("exe") : process.execPath;
       return {
-        supported: true,
-        reason: null,
+        supported: DESKTOP_DISTRIBUTION.updatesEnabled !== false,
+        reason: DESKTOP_DISTRIBUTION.updatesEnabled === false ? "Updates are not configured for this distribution." : null,
         executablePath,
         appBundlePath:
           process.platform === "darwin"
@@ -2884,15 +2888,15 @@ const { ensureAutoUpdater } = registerUpdaterIpc({
   app,
   ipcMain,
   getMainWindow: () => mainWindow,
-  // All distributions intentionally share one application identifier, so they also
-  // share Squirrel's ShipIt domain. Keep the shared default rather than
-  // implying an isolation the bundle identifier cannot provide.
+  // Upstream variants share ShipIt state. CVC has a separate identity and keeps
+  // the updater disabled until it has its own release infrastructure.
   manifestChannel: DESKTOP_DISTRIBUTION.flavor === "public"
     ? "latest"
     : DESKTOP_DISTRIBUTION.flavor,
   electronNet,
   shell,
   distribution: DESKTOP_DISTRIBUTION.flavor,
+  updatesEnabled: DESKTOP_DISTRIBUTION.updatesEnabled !== false,
   platform: process.platform,
   arch: process.arch,
   assertActivation: assertDesktopActivation,
@@ -2940,7 +2944,7 @@ or use: pnpm dev:worktree`);
     const systemCaCertificates = await runtimeManager.systemCaCertificates();
     session.defaultSession.setCertificateVerifyProc(createSystemCaCertificateVerifyProc(systemCaCertificates));
     installMediaPermissionHandlers(session, () => mainWindow);
-    await runPendingNukeCleanup({
+    if (DESKTOP_DISTRIBUTION.flavor !== "cvc") await runPendingNukeCleanup({
       env: process.env,
       homedir: os.homedir(),
       platform: process.platform,

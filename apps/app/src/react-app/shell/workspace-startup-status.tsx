@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { CVC_STUDIO_APP_NAME, isCvcStudioBuild } from "@/app/lib/cvc-studio";
 import { OwDotTicker } from "./dot-ticker";
 import { formatCloudWorkspaceElapsed } from "./cloud-workspace-status";
 
@@ -38,7 +39,9 @@ export function WebStartupScreen({ message }: { message: string }) {
   }, []);
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background px-6 py-16 text-foreground" data-testid="web-startup-screen">
-      <WorkspaceStartupStatus message={slow ? "OpenWork is taking longer than usual to start" : message}>
+      <WorkspaceStartupStatus message={slow
+        ? `${isCvcStudioBuild ? CVC_STUDIO_APP_NAME : "OpenWork"} is taking longer than usual to start`
+        : isCvcStudioBuild ? message.replaceAll("OpenWork", CVC_STUDIO_APP_NAME) : message}>
         {slow ? <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Reload</Button> : null}
       </WorkspaceStartupStatus>
     </main>

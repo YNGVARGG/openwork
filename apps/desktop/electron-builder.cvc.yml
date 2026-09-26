@@ -1,0 +1,16 @@
+extends: ./electron-builder.base.yml
+appId: local.cvc.studio
+productName: CVC Studio
+extraMetadata:
+  openworkDistribution: cvc
+  desktopName: local.cvc.studio
+protocols:
+  - name: CVC Studio
+    schemes:
+      - cvc-studio
+publish: null
+linux:
+  executableName: cvc-studio
+artifactName: cvc-studio-${os}-${arch}-${version}.${ext}
+nsis:
+  include: build/installer.cvc.nsh

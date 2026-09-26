@@ -1,15 +1,19 @@
 /** @jsxImportSource react */
 import { use, type ReactNode } from "react";
 import { isOpenworkGatewayRuntime } from "@/app/lib/gateway-runtime";
+import { CVC_STUDIO_APP_NAME, isCvcStudioBuild } from "@/app/lib/cvc-studio";
 import { WebStartupScreen } from "./workspace-startup-status";
 
 // Startup gates cannot depend on the providers they are still waiting to mount.
-export function StartupScreen({ message = "Starting OpenWork" }: { message?: string }) {
-  if (isOpenworkGatewayRuntime()) return <WebStartupScreen message={message} />;
+export function StartupScreen({ message = isCvcStudioBuild ? `Starting ${CVC_STUDIO_APP_NAME}` : "Starting OpenWork" }: { message?: string }) {
+  const displayMessage = isCvcStudioBuild
+    ? message.replaceAll("OpenWork", CVC_STUDIO_APP_NAME)
+    : message;
+  if (isOpenworkGatewayRuntime()) return <WebStartupScreen message={displayMessage} />;
   return (
     <div className="flex min-h-dvh items-center justify-center bg-dls-surface p-6 text-dls-primary">
       <div className="flex max-w-sm flex-col items-center gap-4 text-center text-sm">
-        <p role="status" aria-live="polite">{message}</p>
+        <p role="status" aria-live="polite">{displayMessage}</p>
         <p className="text-dls-secondary">If startup does not finish, reload to try again.</p>
         <button
           type="button"

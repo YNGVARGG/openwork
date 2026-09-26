@@ -217,7 +217,8 @@ export function createLinuxDesktopIntegration({
   const appImagePath = rawAppImagePath && path.isAbsolute(rawAppImagePath)
     ? path.resolve(rawAppImagePath)
     : null;
-  const supported = platform === "linux" && app.isPackaged && appImagePath != null;
+  // CVC has a separate protocol and identity; upstream repair must never modify it.
+  const supported = distribution !== "cvc" && platform === "linux" && app.isPackaged && appImagePath != null;
   const dataHome = env.XDG_DATA_HOME?.trim() || path.join(homeDir, ".local", "share");
   const configHome = env.XDG_CONFIG_HOME?.trim() || path.join(homeDir, ".config");
   const desktopEntryPath = path.join(dataHome, "applications", OPENWORK_DESKTOP_ID);

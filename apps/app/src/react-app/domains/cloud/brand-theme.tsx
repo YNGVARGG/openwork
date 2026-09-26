@@ -3,6 +3,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { desktopPolicyKeys, type BrandAccentColor } from "@openwork/types/den/desktop-policies";
 
 import { useNotificationStore } from "../../kernel/notification-store";
+import { CVC_STUDIO_APP_NAME, isCvcStudioBuild } from "../../../app/lib/cvc-studio";
 import { useOrgRestrictions } from "./desktop-config-provider";
 
 // ---------------------------------------------------------------------------
@@ -86,7 +87,7 @@ export function useBrandLogoUrl(): string | undefined {
 
 /** Organization-managed display name. It does not change the signed app identity. */
 export function useBrandAppName(): string {
-  return useOrgRestrictions().brandAppName ?? "OpenWork";
+  return useOrgRestrictions().brandAppName ?? (isCvcStudioBuild ? CVC_STUDIO_APP_NAME : "OpenWork");
 }
 
 const POLICY_NOTIFICATION_DEDUPE = "desktop-policy-active";

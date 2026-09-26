@@ -32,6 +32,7 @@ import { useDesktopRestriction } from "../../cloud/desktop-config-provider";
 import { GatewayUsageMenuItem } from "../../cloud/gateway-usage-panel";
 import { useControlAction, type OpenworkControlAction } from "../../../shell/control/control-provider";
 import { useShellConfig } from "../../../shell/shell-config";
+import { isCvcStudioBuild } from "../../../../app/lib/cvc-studio";
 import type { OpenworkServerStatus } from "../../../../app/lib/openwork-server";
 import {
   buildDenAuthUrl,
@@ -287,12 +288,12 @@ export function AccountStatusMenu(props: AccountStatusMenuProps) {
   });
   const accountLabel = signedIn
     ? user.name?.trim() || user.email
-    : restoringSession ? "OpenWork Cloud" : "Sign in";
+    : restoringSession ? "OpenWork Cloud" : isCvcStudioBuild ? "Local workspace" : "Sign in";
   // The sidebar row shows the name only; the email stays inside the account
   // menu so it is not permanently on screen (matches Claude Code and Codex).
   const accountDetail = signedIn
     ? "OpenWork Cloud"
-    : restoringSession ? "Restoring your session" : "Sync with OpenWork Cloud";
+    : restoringSession ? "Restoring your session" : isCvcStudioBuild ? "CVC Studio" : "Sync with OpenWork Cloud";
 
   const runtimeStatus = props.showConnectionStatus
     ? resolveRuntimeStatus({
@@ -522,7 +523,7 @@ export function AccountStatusMenu(props: AccountStatusMenuProps) {
             <LogOut className="size-3.5" />
             Log out
           </DropdownMenuItem>
-        ) : restoringSession ? null : (
+        ) : restoringSession || !shellConfig.cloudSignin ? null : (
           <div
             className="flex flex-col gap-2 px-2 py-2"
             onPointerDown={(event) => event.stopPropagation()}

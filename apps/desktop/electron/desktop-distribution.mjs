@@ -7,6 +7,17 @@ export const PUBLIC_DESKTOP_DISTRIBUTION = Object.freeze({
   requireActivation: false,
 });
 
+export const CVC_DESKTOP_DISTRIBUTION = Object.freeze({
+  flavor: "cvc",
+  appName: "CVC Studio",
+  appIdentifier: "local.cvc.studio",
+  protocolScheme: "cvc-studio",
+  requireSignin: false,
+  requireActivation: false,
+  updatesEnabled: false,
+  telemetryEnabled: false,
+});
+
 export const CLOUD_DESKTOP_DISTRIBUTION = Object.freeze({
   flavor: "cloud",
   appName: "OpenWork Cloud",
@@ -27,7 +38,7 @@ export const ENTERPRISE_DESKTOP_DISTRIBUTION = Object.freeze({
 
 function normalizeFlavor(value) {
   const flavor = value?.trim().toLowerCase();
-  return flavor === "cloud" || flavor === "enterprise" ? flavor : "public";
+  return flavor === "cloud" || flavor === "enterprise" || flavor === "cvc" ? flavor : "public";
 }
 
 /**
@@ -45,6 +56,7 @@ export function resolveDesktopDistribution({
   );
   if (flavor === "cloud") return CLOUD_DESKTOP_DISTRIBUTION;
   if (flavor === "enterprise") return ENTERPRISE_DESKTOP_DISTRIBUTION;
+  if (flavor === "cvc") return CVC_DESKTOP_DISTRIBUTION;
   return PUBLIC_DESKTOP_DISTRIBUTION;
 }
 

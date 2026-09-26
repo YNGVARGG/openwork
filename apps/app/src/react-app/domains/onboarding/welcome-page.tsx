@@ -1,5 +1,6 @@
 /** @jsxImportSource react */
 import { useEffect } from "react";
+import { Building2 } from "lucide-react";
 
 import { t } from "../../../i18n";
 import { useBootState } from "../../shell/boot-state";
@@ -12,6 +13,7 @@ import { DitherBackdrop } from "@/components/dither-backdrop";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollAreaViewport } from "@/components/ui/scroll-area";
 import { useShellConfig } from "../../shell/shell-config";
+import { CVC_STUDIO_APP_NAME, isCvcStudioBuild } from "../../../app/lib/cvc-studio";
 
 type WelcomePageProps = {
   onGetStarted: () => void;
@@ -39,7 +41,8 @@ export function WelcomePage({
   onJoinOrganization,
 }: WelcomePageProps) {
   const { config: shellConfig } = useShellConfig();
-  const appName = shellConfig.appName;
+  const cvcStudio = isCvcStudioBuild;
+  const appName = cvcStudio ? CVC_STUDIO_APP_NAME : shellConfig.appName;
   const { markRouteReady } = useBootState();
 
   // The boot splash overlay stays mounted (and swallows clicks) until the
@@ -59,36 +62,46 @@ export function WelcomePage({
             {/* Paper first-load spec: subtle black pixel-dither mosaic over a
                 near-white ground. `dark:invert` flips the pixels to white so
                 the texture survives dark mode. */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.1] dark:invert">
-              <DitherBackdrop />
-            </div>
+            {!cvcStudio ? (
+              <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.1] dark:invert">
+                <DitherBackdrop />
+              </div>
+            ) : null}
 
             <div className="relative z-10 w-full max-w-[720px] rounded-3xl border border-border bg-background px-8 pb-12 pt-10 sm:px-16 sm:pb-16 sm:pt-14">
               <div className="flex items-center gap-2.5">
-                <img
-                  src={resolveExtensionIconSrc("/openwork-mark.svg")}
-                  alt=""
-                  width={26}
-                  height={26}
-                  className="shrink-0 dark:invert"
-                  aria-hidden="true"
-                />
+                {cvcStudio ? (
+                  <Building2 className="size-[22px] shrink-0 text-muted-foreground" aria-hidden="true" />
+                ) : (
+                  <img
+                    src={resolveExtensionIconSrc("/openwork-mark.svg")}
+                    alt=""
+                    width={26}
+                    height={26}
+                    className="shrink-0 dark:invert"
+                    aria-hidden="true"
+                  />
+                )}
                 <span className="text-[15px] font-semibold tracking-tight text-foreground">
                   {appName}
                 </span>
               </div>
 
               <div className="mt-10 flex flex-col gap-2.5 sm:mt-14">
-                <h1 className="text-[30px] font-semibold leading-[38px] tracking-[-0.03em] text-foreground sm:text-[38px] sm:leading-[46px]">
-                  {t("welcome.title")}
+                <h1 className={cvcStudio
+                  ? "text-[20px] font-semibold leading-7 tracking-[-0.02em] text-foreground"
+                  : "text-[30px] font-semibold leading-[38px] tracking-[-0.03em] text-foreground sm:text-[38px] sm:leading-[46px]"}>
+                  {cvcStudio ? "Open a project" : t("welcome.title")}
                 </h1>
                 <p className="text-[15px] leading-[23px] text-muted-foreground">
-                  {t("welcome.subtitle")}
+                  {cvcStudio
+                    ? "Keep project files and conversations together."
+                    : t("welcome.subtitle")}
                 </p>
               </div>
 
               <div className="mt-11 flex flex-col gap-3">
-                {onTeamSignIn ? (
+                {!cvcStudio && onTeamSignIn ? (
                   <Button
                     type="button"
                     size="lg"
@@ -104,7 +117,7 @@ export function WelcomePage({
                 <Button
                   type="button"
                   size="lg"
-                  variant={onTeamSignIn ? "outline" : "default"}
+                  variant={!cvcStudio && onTeamSignIn ? "outline" : "default"}
                   className="h-12 w-full text-[15px] font-medium"
                   onClick={onGetStarted}
                   disabled={busy}
@@ -112,10 +125,10 @@ export function WelcomePage({
                 >
                   {busy
                     ? t("welcome.creating_workspace")
-                    : (getStartedLabel || t("welcome.use_without_cloud"))}
+                    : (getStartedLabel || (cvcStudio ? "Open project" : t("welcome.use_without_cloud")))}
                 </Button>
 
-                <div className="pt-2">
+                {!cvcStudio ? <div className="pt-2">
                   <button
                     type="button"
                     className="w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
@@ -129,7 +142,7 @@ export function WelcomePage({
                       {t("welcome.join_org_subtitle")}
                     </span>
                   </button>
-                </div>
+                </div> : null}
 
                 {error ? (
                   <p className="text-center text-xs text-destructive">{error}</p>

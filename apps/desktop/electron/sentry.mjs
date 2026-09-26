@@ -52,6 +52,7 @@ function readBuildConfig(app) {
 }
 
 export async function initOpenworkSentry({ app, distribution, packageMetadata }) {
+  if (distribution.telemetryEnabled === false) return false;
   const buildConfig = readBuildConfig(app);
   const dsn = buildConfig.dsn;
   if (!dsn || envFlagEnabled("OPENWORK_DESKTOP_SENTRY_DISABLED")) return false;

@@ -8,6 +8,7 @@ import { bootOverlayCanHide, useBootState, useBootOverlayVisible } from "./boot-
 import { useCloudWorkspaceStatus } from "./cloud-workspace-overlay";
 import { shouldSuppressBootOverlayForGateway } from "./cloud-workspace-status";
 import { OwDotTicker } from "./dot-ticker";
+import { CVC_STUDIO_APP_NAME, isCvcStudioBuild } from "@/app/lib/cvc-studio";
 
 async function loadRecoveryPolicy(
   refreshDesktopConfig: () => Promise<DenDesktopConfig>,
@@ -29,6 +30,9 @@ async function loadRecoveryPolicy(
 export function LoadingOverlay() {
   const visible = useBootOverlayVisible();
   const { phase, routeReady, message, error } = useBootState();
+  const displayMessage = isCvcStudioBuild
+    ? message.replaceAll("OpenWork", CVC_STUDIO_APP_NAME)
+    : message;
   const cloudWorkspace = useCloudWorkspaceStatus();
   const suppressForGateway = shouldSuppressBootOverlayForGateway({
     gatewayMode: cloudWorkspace.gatewayMode,
@@ -110,7 +114,9 @@ export function LoadingOverlay() {
       <div className="flex w-full max-w-[320px] flex-col items-center gap-4 px-6 text-center">
         {error ? (
           <div className="flex w-full flex-col gap-3 text-[12px] leading-5">
-            <div className="text-base font-medium text-dls-primary">OpenWork couldn't start</div>
+            <div className="text-base font-medium text-dls-primary">
+              {isCvcStudioBuild ? `${CVC_STUDIO_APP_NAME} couldn't start` : "OpenWork couldn't start"}
+            </div>
             <div className="text-dls-secondary">Reload to try again, or return to a version that works on this computer.</div>
             <button
               type="button"
@@ -170,7 +176,7 @@ export function LoadingOverlay() {
           <>
             <OwDotTicker size="md" />
             <div className="text-[12px] leading-5 text-dls-secondary">
-              {message || "Preparing workspace"}
+              {displayMessage || "Preparing workspace"}
             </div>
             <button
               type="button"

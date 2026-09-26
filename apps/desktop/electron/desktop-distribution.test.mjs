@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   CLOUD_DESKTOP_DISTRIBUTION,
+  CVC_DESKTOP_DISTRIBUTION,
   ENTERPRISE_DESKTOP_DISTRIBUTION,
   PUBLIC_DESKTOP_DISTRIBUTION,
   desktopActivationRequired,
@@ -12,6 +13,26 @@ import {
 } from "./desktop-distribution.mjs";
 
 describe("resolveDesktopDistribution", () => {
+  it("defines an independent CVC Studio build without cloud gates or updates", () => {
+    assert.deepEqual(
+      resolveDesktopDistribution({
+        isPackaged: true,
+        packageFlavor: "cvc",
+        environmentFlavor: "enterprise",
+      }),
+      {
+        flavor: "cvc",
+        appName: "CVC Studio",
+        appIdentifier: "local.cvc.studio",
+        protocolScheme: "cvc-studio",
+        requireSignin: false,
+        requireActivation: false,
+        updatesEnabled: false,
+        telemetryEnabled: false,
+      },
+    );
+  });
+
   it("defines a Cloud build that requires sign-in without enterprise activation", () => {
     assert.deepEqual(
       resolveDesktopDistribution({

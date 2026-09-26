@@ -1,5 +1,6 @@
 /** @jsxImportSource react */
-import { createContext, useCallback, use, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, use, useEffect, useMemo, useState, type ReactNode } from "react";
+import { CVC_STUDIO_APP_NAME, isCvcStudioBuild } from "../../app/lib/cvc-studio";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -37,12 +38,12 @@ export type ShellConfig = {
 /* ------------------------------------------------------------------ */
 
 export const DEFAULT_SHELL_CONFIG: ShellConfig = {
-  appName: "OpenWork",
+  appName: isCvcStudioBuild ? CVC_STUDIO_APP_NAME : "OpenWork",
   statusBar: true,
   sidebar: true,
-  docsButton: true,
-  feedbackButton: true,
-  cloudSignin: true,
+  docsButton: !isCvcStudioBuild,
+  feedbackButton: !isCvcStudioBuild,
+  cloudSignin: !isCvcStudioBuild,
   welcomePage: true,
   starterCards: true,
   modelPicker: true,
@@ -50,6 +51,22 @@ export const DEFAULT_SHELL_CONFIG: ShellConfig = {
   addWorkspace: true,
   notifications: true,
 };
+
+/**
+ * The CVC artifact has a fixed local identity. Keep persisted shell settings
+ * from an OpenWork profile from re-enabling hosted account affordances or
+ * changing the product name on first boot.
+ */
+function normalizeShellConfig(config: ShellConfig): ShellConfig {
+  if (!isCvcStudioBuild) return config;
+  return {
+    ...config,
+    appName: CVC_STUDIO_APP_NAME,
+    docsButton: false,
+    feedbackButton: false,
+    cloudSignin: false,
+  };
+}
 
 /* ------------------------------------------------------------------ */
 /*  Persistence                                                        */
@@ -63,7 +80,7 @@ function readShellConfig(): ShellConfig {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SHELL_CONFIG;
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_SHELL_CONFIG, ...parsed };
+    return normalizeShellConfig({ ...DEFAULT_SHELL_CONFIG, ...parsed });
   } catch {
     return DEFAULT_SHELL_CONFIG;
   }
@@ -93,17 +110,23 @@ const ShellConfigContext = createContext<ShellConfigContextValue | undefined>(un
 export function ShellConfigProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<ShellConfig>(readShellConfig);
 
+  useEffect(() => {
+    if (!isCvcStudioBuild || typeof document === "undefined") return;
+    document.title = CVC_STUDIO_APP_NAME;
+  }, [config.appName]);
+
   const update = useCallback((patch: Partial<ShellConfig>) => {
     setConfig((prev) => {
-      const next = { ...prev, ...patch };
+      const next = normalizeShellConfig({ ...prev, ...patch });
       writeShellConfig(next);
       return next;
     });
   }, []);
 
   const reset = useCallback(() => {
-    setConfig(DEFAULT_SHELL_CONFIG);
-    writeShellConfig(DEFAULT_SHELL_CONFIG);
+    const next = normalizeShellConfig(DEFAULT_SHELL_CONFIG);
+    setConfig(next);
+    writeShellConfig(next);
   }, []);
 
   const value = useMemo<ShellConfigContextValue>(

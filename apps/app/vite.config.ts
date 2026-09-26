@@ -111,6 +111,7 @@ const isElectronPackagedBuild = process.env.OPENWORK_ELECTRON_BUILD === "1";
 export default defineConfig(({ command, isPreview }) => {
   const denProxy = devDenProxy(command === "serve" && !isPreview ? process.env : {});
   const openworkProxy = devOpenworkProxy(command === "serve" && !isPreview ? process.env : {});
+  const isCvcStudioBuild = process.env.VITE_CVC_STUDIO === "1";
   const headlessBrowserHostSuffix = Object.keys(openworkProxy).length > 0
     ? process.env.OPENWORK_DEV_BROWSER_HOST_SUFFIX
     : undefined;
@@ -141,6 +142,17 @@ export default defineConfig(({ command, isPreview }) => {
         },
       },
       tailwindcss(),
+      {
+        name: "cvc-studio-index-identity",
+        transformIndexHtml(html) {
+          if (!isCvcStudioBuild) return html;
+          return html
+            .replace('<meta name="apple-mobile-web-app-title" content="OpenWork" />', '<meta name="apple-mobile-web-app-title" content="CVC Studio" />')
+            .replace("<title>OpenWork</title>", "<title>CVC Studio</title>")
+            .replace('<p role="status">Starting OpenWork</p>', '<p role="status">Starting CVC Studio</p>')
+            .replace('<p>OpenWork is taking longer than usual to start.</p>', '<p>CVC Studio is taking longer than usual to start.</p>');
+        },
+      },
       react({
         babel: {
           plugins: [["babel-plugin-react-compiler", { compilationMode: "annotation" }]],

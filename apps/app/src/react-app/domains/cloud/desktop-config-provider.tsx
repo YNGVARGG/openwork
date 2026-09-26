@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { MCP_QUICK_CONNECT } from "../../../app/constants";
+import { CVC_STUDIO_APP_NAME, isCvcStudioBuild } from "../../../app/lib/cvc-studio";
 import { isOpenWorkExtensionEnabled, OPENWORK_EXTENSION_STATE_CHANGED } from "../settings/extension-state";
 import { DESKTOP_POLICY_ENFORCEMENT_ENABLED, desktopCapabilityConfig, desktopPolicyKeys } from "@openwork/types/den/desktop-policies";
 
@@ -274,7 +275,7 @@ export function DesktopConfigProvider({ children }: DesktopConfigProviderProps) 
     const brandAppNameAction = actions.find((action) => action.item === "brandAppName");
     if (brandAppNameAction) {
       const appName = typeof brandAppNameAction.nextValue === "string" ? brandAppNameAction.nextValue : null;
-      document.title = appName ?? "OpenWork";
+      document.title = appName ?? (isCvcStudioBuild ? CVC_STUDIO_APP_NAME : "OpenWork");
       void applyBrandAppName(appName).catch(() => null);
     }
 
