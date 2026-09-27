@@ -33,7 +33,7 @@ function contributionName(input: RoomStudyInput, item: RoomStudyRun["contributio
   return input.surfaces.find((surface) => surface.id === item.inputId)?.name ?? "Paroi";
 }
 export function CvcStudyPanel({ client, workspaceId, projectId, runId, revisionId, onClose }: {
-  client: Pick<OpenworkServerClient, "cvcStudy" | "cvcStudyTemperature" | "cvcStudyNote">; workspaceId: string; projectId: string; runId?: string; revisionId?: string; onClose: () => void;
+  client: Pick<OpenworkServerClient, "cvcStudy" | "cvcStudyTemperature" | "cvcStudyNote"> & Partial<Pick<OpenworkServerClient, "cvcStudyReview">>; workspaceId: string; projectId: string; runId?: string; revisionId?: string; onClose: () => void;
 }) {
   const study = useQuery({ queryKey: ["cvc-study", workspaceId, projectId], queryFn: () => client.cvcStudy(workspaceId, projectId), refetchOnWindowFocus: true });
   const [selectedId, setSelectedId] = useState(runId ?? "");
@@ -59,6 +59,12 @@ export function CvcStudyPanel({ client, workspaceId, projectId, runId, revisionI
     if (!boundary) throw new Error("Sélectionnez une condition extérieure.");
     return client.cvcStudyTemperature(workspaceId, projectId, { revisionId: input.revisionId, boundaryId: boundary, temperature: Number(temperature), provenanceDetail: reason.trim() });
   }, onSuccess: async (result) => { await study.refetch(); setSelectedId(result.run.runId); setTemperature(""); setReason(""); setTab("results"); setNotice("Nouvelle révision enregistrée. Le calcul précédent est conservé."); } });
+  const review = useMutation({ mutationFn: async () => {
+    if (!selected || !client.cvcStudyReview) throw new Error("La revue Jev n’est pas disponible sur ce serveur.");
+    return client.cvcStudyReview(workspaceId, projectId, selected.runId);
+  } });
+  const currentReview = review.data?.runId === selected?.runId ? review.data : undefined;
+  const [exporting, setExporting] = useState(false);
   const note = useQuery({ queryKey: ["cvc-note", workspaceId, projectId, selected?.runId], queryFn: () => {
     if (!selected) throw new Error("Aucun calcul enregistré.");
     return client.cvcStudyNote(workspaceId, projectId, selected.runId);
@@ -74,7 +80,7 @@ export function CvcStudyPanel({ client, workspaceId, projectId, runId, revisionI
     {unavailable ? <p role="alert" className="p-4">Le calcul demandé est introuvable. Consultez l’historique ; aucun autre calcul ne le remplace automatiquement.</p> : null}
     {notice ? <p role="status" className="px-4 pt-3 text-sm">{notice}</p> : null}
     {input ? <Tabs value={tab} onValueChange={(value) => setTab(String(value))} className="min-h-0 flex-1 gap-0">
-      <TabsList variant="line" className="mx-4 my-2 max-w-full overflow-x-auto"><TabsTrigger value="results">Résultats</TabsTrigger><TabsTrigger value="data">Données</TabsTrigger><TabsTrigger value="history">Historique</TabsTrigger><TabsTrigger value="note">Note de calcul</TabsTrigger></TabsList>
+      <TabsList variant="line" className="mx-4 my-2 max-w-full overflow-x-auto"><TabsTrigger value="results">Résultats</TabsTrigger><TabsTrigger value="data">Données</TabsTrigger><TabsTrigger value="review">Revue Jev</TabsTrigger><TabsTrigger value="history">Historique</TabsTrigger><TabsTrigger value="note">Note de calcul</TabsTrigger></TabsList>
       <div className="min-h-0 flex-1 overflow-auto p-4">
       <p className="mb-4 text-xs text-muted-foreground">Étude préliminaire · aucune sélection d’équipement. {input.indoorTemperature.provenance.kind === "assumed" ? "Données supposées — à vérifier." : "Consultez les sources des données."}</p>
       {hasDraft ? <p role="status" className="mb-4 text-sm">Modification non calculée : les résultats affichés restent ceux de la révision enregistrée.</p> : null}
@@ -100,8 +106,29 @@ export function CvcStudyPanel({ client, workspaceId, projectId, runId, revisionI
         <details className="mt-4 text-sm"><summary>Périmètre et ponts thermiques</summary><p className="mt-2">{input.envelopeDescription}</p><p>{input.airExchange.scopeDescription}</p>{input.thermalBridges.mode === "excluded" ? <p>{input.thermalBridges.reason}</p> : input.thermalBridges.items.map((bridge) => <p key={bridge.id} className="mt-2">{bridge.name} : {number(bridge.linearTransmittance.value)} W/(m·K) × {number(bridge.length.value)} m. {origin[bridge.linearTransmittance.provenance.kind]} — {bridge.linearTransmittance.provenance.detail}. {origin[bridge.length.provenance.kind]} — {bridge.length.provenance.detail}.</p>)}</details>
       </TabsContent>
       <TabsContent value="history"><h3 className="mb-4 text-sm font-medium">Calculs conservés</h3>{runs.length ? [...runs].reverse().map((run) => <div key={run.runId} className="flex items-center justify-between gap-3 border-b py-3"><div><p className="text-sm font-medium">{number(run.totals.heatLossW)} W {run.runId === selected?.runId ? "· affiché" : ""}</p><p className="text-xs text-muted-foreground">{new Date(run.createdAt).toLocaleString("fr-FR")}</p></div><Button variant="outline" size="sm" disabled={hasDraft || change.isPending} onClick={() => { setSelectedId(run.runId); setTab("results"); }}>Consulter</Button></div>) : <p>Aucun calcul enregistré.</p>}<p className="mt-4 text-xs text-muted-foreground">{study.data?.revisions.length ?? 0} révision(s) conservée(s). Les calculs précédents ne sont pas remplacés.</p></TabsContent>
+      <TabsContent value="review" className="space-y-4">
+        <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-medium">Points à vérifier</h3><Button variant="outline" disabled={!selected || review.isPending || hasDraft} onClick={() => review.mutate()}>{review.isPending ? "Revue en cours…" : currentReview ? "Actualiser la revue" : "Revoir avec Jev"}</Button></div>
+        <p className="text-xs text-muted-foreground">Cette action envoie les déclarations de la pièce à TypeSafe. Jev propose les points à clarifier ; le calcul reste inchangé.</p>
+        {review.isError ? <p role="alert" className="text-sm">{review.error.message}</p> : null}
+        {currentReview ? <><p role="status" className="text-sm">{currentReview.message}</p>
+          {currentReview.findings.map(finding => <div key={finding.id} className="border-b py-3"><div className="flex items-start justify-between gap-3"><span className="text-sm font-medium">{finding.label}</span><span className="text-xs text-muted-foreground">{finding.decision === "clarify" ? "À clarifier" : finding.decision === "insufficient" ? "Justificatif à compléter" : "Déclaration cohérente"}</span></div>
+            {finding.decision !== "coherent" ? <p className="mt-2 text-sm">{finding.action}</p> : null}
+            <details className="mt-2 text-xs text-muted-foreground"><summary>À propos de cet avis</summary><p className="mt-2">Avis indicatif, sans authentification du document source. Indice du modèle : {number(finding.confidence * 100)} %. Ce nombre ne mesure pas la justesse du calcul.</p></details></div>)}
+          <details className="text-xs text-muted-foreground"><summary>Traçabilité de la revue</summary><p className="mt-2">{currentReview.model ?? "Service non disponible"} · {currentReview.questionVersion}</p><p>Calcul : {currentReview.runId}</p></details>
+        </> : <p className="text-sm text-muted-foreground">Aucune revue pour ce calcul enregistré.</p>}
+      </TabsContent>
       <TabsContent value="note">
-        {!selected ? <p>Calculez la pièce avant de préparer la note.</p> : <><Button className="mb-3" variant="outline" disabled={!note.data || !printReady} onClick={() => { try { noteFrame.current?.contentWindow?.print(); } catch { setNotice("L’impression n’a pas pu démarrer. Réessayez après avoir rechargé la note."); } }}>Imprimer / enregistrer en PDF</Button><p className="mb-3 text-xs text-muted-foreground">Choisissez l’imprimante PDF dans la fenêtre d’impression pour enregistrer un document.</p>{note.isPending ? <div className="h-48 animate-pulse bg-muted" /> : note.isError ? <p role="alert">La note n’a pas pu être vérifiée : {note.error.message}</p> : <iframe key={selected.runId} ref={noteFrame} title="Note de calcul vérifiée" sandbox="allow-same-origin allow-modals" srcDoc={note.data?.html} onLoad={() => setPrintReady(true)} className="h-[65vh] w-full border bg-white" />}</>}
+        {!selected ? <p>Calculez la pièce avant de préparer la note.</p> : <><Button className="mb-3" variant="outline" disabled={!note.data || !printReady || exporting} onClick={async () => {
+          try {
+            setExporting(true);
+            const native = window.__OPENWORK_ELECTRON__?.cvc;
+            if (native && note.data && selected) {
+              const result = await native.exportPdf({ html: note.data.html, title: selected.inputSnapshot.room.name });
+              if (!result.canceled) setNotice(`PDF enregistré : ${result.fileName ?? "note de calcul"}`);
+            } else { noteFrame.current?.contentWindow?.print(); }
+          } catch { setNotice("L’export PDF n’a pas abouti. Votre calcul est conservé ; réessayez."); }
+          finally { setExporting(false); }
+        }}>{exporting ? "Export en cours…" : "Exporter le PDF"}</Button><p className="mb-3 text-xs text-muted-foreground">Note A4 issue du calcul enregistré · sources et hypothèses en annexe.</p>{note.isPending ? <div className="h-48 animate-pulse bg-muted" /> : note.isError ? <p role="alert">La note n’a pas pu être vérifiée : {note.error.message}</p> : <iframe key={selected.runId} ref={noteFrame} title="Note de calcul vérifiée" sandbox="allow-same-origin allow-modals" srcDoc={note.data?.html} onLoad={() => setPrintReady(true)} className="h-[65vh] w-full border bg-white" />}</>}
       </TabsContent>
       </div>
     </Tabs> : !unavailable && !study.isPending && !study.isError ? <p className="p-4">Aucune révision enregistrée. Importez les données de la pièce depuis la conversation.</p> : null}

@@ -1901,6 +1901,10 @@ export function createOpenworkServerClient(options: { baseUrl: string; token?: s
         `/workspace/${encodeURIComponent(workspaceId)}/cvc/studies/${encodeURIComponent(projectId)}/temperature`,
         { token, hostToken, method: "POST", body: input, timeoutMs: timeouts.config },
       ),
+    cvcStudyReview: (workspaceId: string, projectId: string, runId: string) =>
+      requestJson<OpenworkCvcReview>(baseUrl,
+        `/workspace/${encodeURIComponent(workspaceId)}/cvc/studies/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/review`,
+        { token, hostToken, method: "POST", body: {}, timeoutMs: 35_000 }),
     cvcStudyNote: (workspaceId: string, projectId: string, runId: string) =>
       requestJson<{ html: string }>(
         baseUrl,
@@ -2652,3 +2656,9 @@ export function createOpenworkServerClient(options: { baseUrl: string; token?: s
 }
 
 export type OpenworkServerClient = ReturnType<typeof createOpenworkServerClient>;
+
+export type OpenworkCvcReview = {
+  runId: string; revisionId: string; inputHash: string; questionVersion: string;
+  status: "ready" | "unavailable"; message: string; model: string | null;
+  findings: { id: string; label: string; decision: "coherent" | "clarify" | "insufficient"; confidence: number; action: string }[];
+};

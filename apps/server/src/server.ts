@@ -1,3 +1,4 @@
+import { cvcJevKey, reviewCvcRun } from "./cvc-jev-review.js";
 import { createV2SessionHomes, nativeSession, nativeSessionDirectory } from "./opencode-v2-session-home.js";
 import { createNativeCloudMcpResolver, createRoutedCloudMcpRegistrar } from "./cloud-mcp-v2.js";
 import { managedDesktopPolicy } from "./managed-desktop-policy.js";
@@ -4388,6 +4389,18 @@ function createRoutes(
       run,
       comparison: sourceRun ? await store.compareRuns(projectId, sourceRun.runId, run.runId) : null,
     });
+  });
+
+  addRoute(routes, "POST", "/workspace/:id/cvc/studies/:projectId/runs/:runId/review", "client", async (ctx) => {
+    requireCvcEnabled();
+    requireClientScope(ctx, "collaborator");
+    const workspace = await resolveWorkspace(config, ctx.params.id);
+    if (workspace.workspaceType === "remote") throw new ApiError(400, "cvc_workspace_unsupported", "CVC requires a local workspace");
+    const projectId = parseCvcIdentifier(ctx.params.projectId, "projectId");
+    const runId = parseCvcIdentifier(ctx.params.runId, "runId");
+    const store = await openRoomStudyStore(workspace.path);
+    const run = await store.readRun(projectId, runId);
+    return jsonResponse(await reviewCvcRun(run, { key: await cvcJevKey() }));
   });
 
   addRoute(routes, "GET", "/workspace/:id/cvc/studies/:projectId/runs/:runId/note", "client", async (ctx) => {

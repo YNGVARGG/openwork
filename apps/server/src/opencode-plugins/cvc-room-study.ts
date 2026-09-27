@@ -1,3 +1,5 @@
+import { opaqueUArgs, windowUArgs, opaqueU, windowU } from "./cvc-thermal-tools.js";
+import { cvcJevKey, reviewCvcRun } from "../cvc-jev-review.js";
 import { z } from "zod";
 import { realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
@@ -50,10 +52,29 @@ export const CvcRoomStudy = async (factoryInput?: unknown) => {
       appendAgentInstructions(result.system, createInstructionSection("cvc-room-study", `## Étude CVC d'une pièce
 Répondez en français dès le premier message pour cette étude. Si les données existent dans un fichier JSON du dossier actif, utilisez cvc_revision_import avec son chemin relatif : ne recopiez jamais le gros objet dans cvc_revision_save. Omettez parentRevisionId pour la première révision ; ne fournissez ni null ni parent fictif. Réutilisez un projet déjà créé. Après deux erreurs identiques, arrêtez les tentatives et expliquez le blocage sans déléguer des répétitions. Utilisez cvc_study_schema pour connaître les données requises ; demandez les valeurs manquantes sans inventer de température, U, débit ou propriété de l'air. Enregistrez la provenance de chaque donnée. Présentez les hypothèses à l'utilisateur. cvc_revision_save valide avant toute écriture et renvoie les champs à corriger.
 Les parois portent des aires brutes ; leurs ouvertures sont imbriquées et déduites une seule fois. Les limites sont des conditions nommées ; les ouvertures et ponts héritent de leur paroi. Le débit est le débit extérieur total déclaré sans récupération. Exclure les ponts exige un motif explicite.
-Créez un projet, enregistrez une révision complète avec un nouvel identifiant, puis appelez cvc_calculate. Seuls les outils de calcul produisent les nombres ; ne calculez pas les résultats dans le texte ou via un script. Gardez les identifiants techniques dans les outils ; ne les affichez pas dans le résumé. Cette méthode préliminaire ne certifie aucune conformité et ne sélectionne aucun équipement.
+Créez un projet, enregistrez une révision complète avec un nouvel identifiant, puis appelez cvc_calculate. Utilisez cvc_opaque_u et cvc_window_u pour les coefficients dérivés quand les entrées et leurs sources sont disponibles ; conservez leur méthode et leurs données dans la provenance. Proposez cvc_review après le calcul pour identifier rapidement les déclarations à clarifier ; une revue Jev ne remplace ni une source ni une validation humaine. Seuls les outils de calcul produisent les nombres ; ne calculez pas les résultats dans le texte ou via un script. Gardez les identifiants techniques dans les outils ; ne les affichez pas dans le résumé. Cette méthode préliminaire ne certifie aucune conformité et ne sélectionne aucun équipement.
 Pour une modification, lisez la révision précédente, enregistrez une nouvelle révision avec parentRevisionId puis calculez et comparez les deux calculs. Pour reprendre un projet dans une autre conversation, utilisez cvc_project_list, cvc_project_read et cvc_run_read. Après un calcul ou à la demande de consulter une étude, appelez cvc_study_open et affichez son markdownLink sans afficher son chemin brut. Répondez brièvement en français : total, état enregistré, hypothèses importantes et lien de l’étude. Les détails sont dans le panneau natif. N’exportez pas de HTML par défaut, même pour une note de calcul : la note et l’impression PDF se trouvent dans l’étude. Réservez cvc_report_export à une demande explicite de fichier HTML. Les anciens calculs ne doivent jamais être écrasés.`));
     },
     tool: {
+      cvc_opaque_u: {
+        description: "Calculer U d’une paroi opaque homogène à partir de couches et résistances superficielles sourcées. Aucun défaut normatif. Ne convient pas au sol, vitrage ou paroi complexe.", args: opaqueUArgs.shape,
+        async execute(raw: unknown) { return output(opaqueU(raw)); },
+      },
+      cvc_window_u: {
+        description: "Calculer Uw d’une baie à partir de Ug, Uf, psi et géométrie sourcés. Aucun coefficient inventé.", args: windowUArgs.shape,
+        async execute(raw: unknown) { return output(windowU(raw)); },
+      },
+      cvc_review: {
+        description: "Revue Jev indicative des déclarations d’un calcul sauvegardé : incohérences, hypothèses et questions à clarifier. Envoie les données de cette étude à TypeSafe ; ne valide pas les calculs ni les normes.", args: runArgs.shape,
+        async execute(raw: unknown, context?: unknown) {
+          const args = runArgs.parse(raw);
+          const service = await store(context, "read", args.projectId);
+          const run = await service.readRun(args.projectId, args.runId);
+          if (!record(context) || typeof context.ask !== "function") throw new Error("Autorisation indisponible.");
+          await context.ask({ permission: "webfetch", patterns: ["https://api.typesafe.ai/*"], always: [], metadata: { action: "Envoyer les déclarations de la pièce à Jev pour revue indicative" } });
+          return output(await reviewCvcRun(run, { key: await cvcJevKey() }));
+        },
+      },
       cvc_study_schema: {
         description: "Lire le schéma et les unités nécessaires à une étude préliminaire de déperditions hivernales d'une pièce.", args: {},
         async execute() { return output({ schema: z.toJSONSchema(roomStudyInputSchema), note: "Aucune valeur climatique ou constructive par défaut. Identifiants nouveaux pour chaque révision ; unités littérales et provenance obligatoires." }); },

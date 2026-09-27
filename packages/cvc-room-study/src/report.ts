@@ -50,8 +50,9 @@ function formatNumber(value: number): string {
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 3 }).format(value);
 }
 
+const displayUnits: Record<string, string> = { degC: '°C', m2: 'm²', 'm3/h': 'm³/h', 'kg/m3': 'kg/m³', 'W/(m2.K)': 'W/(m².K)' };
 function formatQuantity(quantity: Quantity): string {
-  return `${escapeHtml(formatNumber(quantity.value))} ${escapeHtml(quantity.unit)}`;
+  return `${escapeHtml(formatNumber(quantity.value))} ${escapeHtml(displayUnits[quantity.unit] ?? quantity.unit)}`;
 }
 
 function renderProvenance(run: RoomStudyRun): string {
@@ -85,10 +86,10 @@ function renderSurfaces(run: RoomStudyRun): string {
   for (const surface of run.inputSnapshot.surfaces) {
     const boundary = boundaryNames.get(surface.boundaryId);
     const boundaryCell = boundary
-      ? `${escapeHtml(boundary.id)} (${escapeHtml(boundary.kind)})<br>${formatQuantity(boundary.temperature)}`
+      ? `${escapeHtml(boundary.id)} (${escapeHtml(boundary.kind === 'outdoor' ? 'Extérieur' : 'Local adjacent')})<br>${formatQuantity(boundary.temperature)}`
       : escapeHtml(surface.boundaryId);
     rows.push([
-      `${escapeHtml(surface.name)}<br><small>${escapeHtml(surface.id)} · ${escapeHtml(surface.kind)}</small>`,
+      `${escapeHtml(surface.name)}<br><small>${escapeHtml(surface.id)} · ${escapeHtml({ wall: 'Mur', ceiling: 'Plafond', floor: 'Plancher' }[surface.kind])}</small>`,
       boundaryCell,
       formatQuantity(surface.grossArea),
       formatQuantity(surface.thermalTransmittance),
@@ -118,7 +119,7 @@ function renderContributions(run: RoomStudyRun): string {
   return table(
     ["Type", "Entrée", "Coefficient", "ΔT", "Mesure", "Déperdition"],
     run.contributions.map((contribution) => [
-      escapeHtml(contribution.kind),
+      escapeHtml({ opaque: 'Paroi opaque', opening: 'Ouverture', 'thermal-bridge': 'Pont thermique', 'air-exchange': 'Air extérieur' }[contribution.kind]),
       escapeHtml(contribution.inputId),
       `${escapeHtml(formatNumber(contribution.coefficientWK))} W/K`,
       `${escapeHtml(formatNumber(contribution.deltaTK))} K`,
@@ -150,37 +151,42 @@ export function renderRoomStudyHtml(candidate: unknown): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Note de calcul — ${escapeHtml(input.room.name)}</title>
   <style>
-    :root { color-scheme: light; font-family: Arial, sans-serif; color: #172033; background: #fff; }
-    body { margin: 0 auto; max-width: 1000px; padding: 32px; line-height: 1.45; }
-    h1, h2 { color: #0b3d6d; margin: 1.4em 0 0.45em; }
-    h1 { margin-top: 0; }
-    table { border-collapse: collapse; width: 100%; margin: 0.7em 0 1.2em; font-size: 14px; }
+    :root { color-scheme: light; font-family: Arial, sans-serif; color: #232824; background: #fff; }
+    * { box-sizing: border-box; }
+    body { margin: 0 auto; max-width: 900px; padding: 36px; line-height: 1.5; font-size: 12px; }
+    .masthead { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #253e35; padding-bottom: 14px; margin-bottom: 30px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .status { letter-spacing: 0; color: #685832; }
+    h1 { font-size: 29px; font-weight: 500; letter-spacing: -.04em; margin: 0 0 8px; line-height: 1.15; }
+    .room { font-size: 16px; margin: 0 0 20px; color: #556158; }
+    h2 { font-size: 15px; color: #253e35; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #dce2dc; break-after: avoid; }
+    p { margin: 8px 0; }
+    .hero { background: #f1f5f0; padding: 20px 24px; margin: 20px 0; border-left: 3px solid #446c55; break-inside: avoid; }
+    .hero-label { display: block; text-transform: uppercase; font-size: 10px; letter-spacing: .08em; color: #52644f; }
+    .hero-value { font-size: 42px; font-weight: 500; letter-spacing: -.04em; }
+    .hero-unit { font-size: 18px; color: #52644f; }
+    .summary { display: flex; gap: 28px; margin-top: 12px; font-size: 11px; }
+    .summary strong { display:block; font-size: 15px; font-weight: 500; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0 18px; font-size: 10px; table-layout: fixed; }
     tr { break-inside: avoid; } thead { display: table-header-group; }
-    th, td { border: 1px solid #aeb7c2; padding: 7px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-    th { background: #eaf1f8; }
-    small { color: #425466; }
-    .meta { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; overflow-wrap: anywhere; }
-    .total { font-size: 1.2em; font-weight: 700; }
-    @media print { body { max-width: none; padding: 12mm; } h2 { break-after: avoid; } }
+    th, td { border-bottom: 1px solid #dce2dc; padding: 8px 6px; text-align: left; vertical-align: top; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+    th { background: #f3f5f2; color: #52644f; font-size: 9px; font-weight: 600; }
+    small { color: #6b736c; font-size: 9px; }
+    .meta { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 6px 16px; overflow-wrap: anywhere; font-size: 10px; }
+    .meta strong { font-weight: 500; color: #626c63; }
+    .total { font-weight: 700; }
+    .scope { color: #626c63; font-size: 11px; max-width: 680px; }
+    .annex { break-before: auto; }
+    @page { size: A4; margin: 14mm 13mm 18mm; }
+    @media print { body { max-width: none; padding: 0; font-size: 10px; } h2 { break-after: avoid; } }
   </style>
 </head>
 <body>
-  <h1>Note de calcul — déperditions hivernales</h1>
-  <p>Étude préliminaire stationnaire pour une pièce. Elle n'est pas une étude réglementaire ni un dimensionnement d'équipement.</p>
-  <p class="total">Déperditions totales : ${escapeHtml(formatNumber(run.totals.heatLossW))} W</p>
-
-  <h2>Identification et traçabilité</h2>
-  <div class="meta">
-    <strong>Projet</strong><span>${escapeHtml(input.projectId)}</span>
-    <strong>Pièce</strong><span>${escapeHtml(input.room.name)} (${escapeHtml(input.room.id)})</span>
-    <strong>Révision d'entrée</strong><span>${escapeHtml(input.revisionId)}</span>
-    <strong>Exécution</strong><span>${escapeHtml(run.runId)}</span>
-    <strong>Créée le</strong><span>${escapeHtml(run.createdAt)}</span>
-    <strong>Méthode</strong><span>${escapeHtml(run.method.id)} — v${escapeHtml(run.method.version)}</span>
-    <strong>Implémentation</strong><span>${escapeHtml(run.method.implementationVersion)}</span>
-    <strong>Références de méthode</strong><span>${run.method.referenceIds.map(escapeHtml).join(", ")}</span>
-    <strong>Applicabilité</strong><span>${escapeHtml(run.applicability)}</span>
-  </div>
+  <div class="masthead"><strong>CVC Studio</strong><span class="status">Étude préliminaire · à vérifier</span></div>
+  <h1>Déperditions hivernales</h1>
+  <p class="room">${escapeHtml(input.room.name)}</p>
+  <p class="scope">Note de calcul — étude stationnaire d’une pièce. Ce document ne constitue ni une étude réglementaire ni un dimensionnement d’équipement.</p>
+  <div class="hero"><span class="hero-label">Déperditions totales</span><span class="hero-value">${escapeHtml(formatNumber(run.totals.heatLossW))}</span> <span class="hero-unit">W</span>
+  <div class="summary"><span>Parois et ouvertures<strong>${escapeHtml(formatNumber(run.totals.transmissionW))} W</strong></span><span>Ponts thermiques<strong>${escapeHtml(formatNumber(run.totals.thermalBridgesW))} W</strong></span><span>Renouvellement d’air<strong>${escapeHtml(formatNumber(run.totals.airExchangeW))} W</strong></span></div></div>
 
   <h2>Hypothèses, périmètre et avertissements</h2>
   <p>${escapeHtml(input.envelopeDescription)}</p>
@@ -190,7 +196,7 @@ export function renderRoomStudyHtml(candidate: unknown): string {
   <p><strong>Température intérieure :</strong> ${formatQuantity(input.indoorTemperature)}</p>
   ${table(
     ["ID", "Type", "Température"],
-    input.boundaries.map((boundary) => [escapeHtml(boundary.id), escapeHtml(boundary.kind), formatQuantity(boundary.temperature)]),
+    input.boundaries.map((boundary) => [escapeHtml(boundary.id), escapeHtml(boundary.kind === 'outdoor' ? 'Extérieur' : 'Local adjacent'), formatQuantity(boundary.temperature)]),
   )}
   ${table(
     ["Air extérieur", "Valeur déclarée"],
@@ -224,8 +230,23 @@ export function renderRoomStudyHtml(candidate: unknown): string {
       `<span class="total">${escapeHtml(formatNumber(run.totals.heatLossW))} W</span>`,
     ]],
   )}
-  <h2>Provenance de toutes les données</h2>
+  <h2 class="annex">Provenance de toutes les données</h2>
   ${renderProvenance(run)}
+  <h2>Identification et traçabilité</h2>
+  <div class="meta">
+    <strong>Projet</strong><span>${escapeHtml(input.projectId)}</span>
+    <strong>Pièce</strong><span>${escapeHtml(input.room.name)} (${escapeHtml(input.room.id)})</span>
+    <strong>Révision d'entrée</strong><span>${escapeHtml(input.revisionId)}</span>
+    <strong>Exécution</strong><span>${escapeHtml(run.runId)}</span>
+    <strong>Créée le</strong><span>${escapeHtml(run.createdAt)}</span>
+    <strong>Méthode</strong><span>${escapeHtml(run.method.id)} — v${escapeHtml(run.method.version)}</span>
+    <strong>Modèle de note</strong><span>cvc-note-v2</span>
+    <strong>Implémentation</strong><span>${escapeHtml(run.method.implementationVersion)}</span>
+    <strong>Références de méthode</strong><span>${run.method.referenceIds.map(escapeHtml).join(", ")}</span>
+    <strong>Applicabilité</strong><span>${escapeHtml(run.applicability)}</span>
+  </div>
+
+
 </body>
 </html>`;
 }

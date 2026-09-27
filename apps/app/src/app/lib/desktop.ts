@@ -154,6 +154,7 @@ declare global {
       select: (id: string) => Promise<unknown>;
     };
     __OPENWORK_ELECTRON__?: {
+      cvc?: { exportPdf: (payload: { html: string; title: string }) => Promise<{ canceled: boolean; fileName?: string }> };
       invokeDesktop?: <C extends DesktopCommandName>(
         command: C,
         ...args: DesktopCommandArgs<C>

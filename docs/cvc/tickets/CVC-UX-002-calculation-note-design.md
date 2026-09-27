@@ -21,3 +21,7 @@ La note actuelle ressemble à une page HTML imprimée et ne correspond pas à la
 Vérifier visuellement et numériquement un cas court, un cas sur plusieurs pages, de longs noms, des valeurs nulles/petites, des hypothèses non validées et un logo absent/présent. Ouvrir le PDF dans un lecteur indépendant, contrôler pagination, sélection de texte, accents et impression. Les valeurs doivent correspondre au run enregistré. La méthode actuelle reste préliminaire, sans mention de conformité EN 12831/RE2020.
 
 Aucun nouveau PDF n’est créé dans ce ticket de cadrage. À faire avant la livraison documentaire professionnelle.
+
+## Implementation update — 2026-09-27
+
+The initial A4 redesign and native Electron PDF export are implemented. See [desktop integration and evidence](../desktop-jev-pdf.md). The reference note was visually checked on all four pages and its saved-run values checked after PDF text extraction. This ticket remains open for company identity/logo, author and verifier metadata, issued-document archiving, and the full long-name/logo acceptance matrix. No professional verification status is assigned automatically.

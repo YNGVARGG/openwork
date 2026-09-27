@@ -454,12 +454,15 @@ importers:
 
   apps/server:
     dependencies:
-      '@cvc/room-study':
-        specifier: workspace:*
-        version: link:../../packages/cvc-room-study
       '@ai-sdk/provider':
         specifier: 3.0.12
         version: 3.0.12
+      '@cvc/room-study':
+        specifier: workspace:*
+        version: link:../../packages/cvc-room-study
+      '@cvc/thermal':
+        specifier: workspace:*
+        version: link:../../packages/cvc-thermal
       '@modelcontextprotocol/client':
         specifier: ^2.0.0
         version: 2.0.0(patch_hash=702e2000a3f78e99cfa6971ac4c90466d482174e49340634c0f5b1f346285c12)
@@ -1320,6 +1323,12 @@ importers:
       zod:
         specifier: 4.3.6
         version: 4.3.6
+
+  packages/cvc-thermal:
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
 
   packages/email:
     dependencies:

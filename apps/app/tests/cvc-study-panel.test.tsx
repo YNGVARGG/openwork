@@ -33,6 +33,7 @@ test("native study shows a verified result and human contribution labels", () =>
   expect(html).toContain("Résultats");
   expect(html).toContain("Données");
   expect(html).toContain("Historique");
+  expect(html).toContain("Revue Jev");
   expect(html).not.toContain("<pre");
 });
 test("missing historical run never silently falls back to latest result", () => {
