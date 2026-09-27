@@ -4,9 +4,14 @@ import { managedDesktopPolicy } from "./managed-desktop-policy.js";
 import { createTaskRecovery, setTaskRecovery } from "./task-recovery.js";
 import { managedPolicyActionSchema } from "./managed-policy-rules.js";
 import { readFile, realpath, writeFile, rm, stat } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { homedir, hostname } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
+import { roomStudyInputSchema } from "@cvc/room-study";
+import { calculateRoomStudy } from "@cvc/room-study/calculator";
+import { renderRoomStudyHtml } from "@cvc/room-study/report";
+import { openRoomStudyStore } from "@cvc/room-study/store";
 import { resolveGlobalOpencodeConfigPath } from "@openwork/paths";
 import type { ApprovalRequest, Capabilities, ServerConfig, WorkspaceInfo, Actor, ReloadReason, ReloadTrigger, TokenScope } from "./types.js";
 import { agentContextDiagnosticsRequestSchema } from "./agent-context-diagnostics-schema.js";
@@ -181,6 +186,41 @@ const AGENT_DIAGNOSTICS_DEFAULT_BODY_DEADLINE_MS = 2_000;
 const AGENT_DIAGNOSTICS_ERROR_FLUSH_MS = 25;
 const COMMAND_ADMISSION_CAPACITY = 10_000;
 const COMMAND_ADMISSION_TTL_MS = 24 * 60 * 60 * 1_000;
+const CVC_IDENTIFIER = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/;
+
+function parseCvcIdentifier(value: unknown, field: string): string {
+  if (typeof value !== "string" || !CVC_IDENTIFIER.test(value)) {
+    throw new ApiError(400, "invalid_cvc_request", `${field} is invalid`);
+  }
+  return value;
+}
+
+function requireCvcEnabled(): void {
+  if (process.env.OPENWORK_CVC_ENABLED !== "1") {
+    throw new ApiError(404, "not_found", "Not found");
+  }
+}
+
+function parseCvcTemperaturePayload(body: Record<string, unknown>): {
+  revisionId: string;
+  boundaryId: string;
+  temperature: number;
+  provenanceDetail: string;
+} {
+  const revisionId = parseCvcIdentifier(body.revisionId, "revisionId");
+  const boundaryId = parseCvcIdentifier(body.boundaryId, "boundaryId");
+  if (typeof body.temperature !== "number" || !Number.isFinite(body.temperature) || body.temperature <= -273.15) {
+    throw new ApiError(400, "invalid_cvc_request", "temperature must be a finite value above absolute zero");
+  }
+  if (typeof body.provenanceDetail !== "string") {
+    throw new ApiError(400, "invalid_cvc_request", "provenanceDetail is required");
+  }
+  const provenanceDetail = body.provenanceDetail.trim();
+  if (provenanceDetail.length === 0 || provenanceDetail.length > 2_000) {
+    throw new ApiError(400, "invalid_cvc_request", "provenanceDetail is invalid");
+  }
+  return { revisionId, boundaryId, temperature: body.temperature, provenanceDetail };
+}
 
 function rethrowMcpAppHostError(error: unknown): never {
   if (!(error instanceof McpAppHostError)) throw error;
@@ -4287,6 +4327,82 @@ function createRoutes(
     const sensitiveMode = parseWorkspaceExportSensitiveMode(ctx.url.searchParams.get("sensitive"));
     const exportPayload = await exportWorkspace(config, workspace, { sensitiveMode });
     return jsonResponse(exportPayload);
+  });
+
+  addRoute(routes, "GET", "/workspace/:id/cvc/studies/:projectId", "client", async (ctx) => {
+    requireCvcEnabled();
+    const workspace = await resolveWorkspace(config, ctx.params.id);
+    if (workspace.workspaceType === "remote") {
+      throw new ApiError(400, "cvc_workspace_unsupported", "CVC studies require a local workspace");
+    }
+    const projectId = parseCvcIdentifier(ctx.params.projectId, "projectId");
+    const store = await openRoomStudyStore(workspace.path);
+    const [project, revisions, runs] = await Promise.all([
+      store.readProject(projectId),
+      store.listRevisions(projectId),
+      store.listRuns(projectId),
+    ]);
+    return jsonResponse({ project, revisions, runs });
+  });
+
+  addRoute(routes, "POST", "/workspace/:id/cvc/studies/:projectId/temperature", "client", async (ctx) => {
+    requireCvcEnabled();
+    ensureWritable(config);
+    requireClientScope(ctx, "collaborator");
+    const workspace = await resolveWorkspace(config, ctx.params.id);
+    if (workspace.workspaceType === "remote") {
+      throw new ApiError(400, "cvc_workspace_unsupported", "CVC studies require a local workspace");
+    }
+    const projectId = parseCvcIdentifier(ctx.params.projectId, "projectId");
+    const payload = parseCvcTemperaturePayload(await readJsonBody(ctx.request));
+    const store = await openRoomStudyStore(workspace.path);
+    const source = await store.readRevision(projectId, payload.revisionId);
+    const input = structuredClone(source.input);
+    const boundary = input.boundaries.find((item) => item.id === payload.boundaryId);
+    if (!boundary) {
+      throw new ApiError(404, "cvc_boundary_not_found", "Boundary not found in the source revision");
+    }
+    input.revisionId = randomUUID();
+    boundary.temperature = {
+      value: payload.temperature,
+      unit: "degC",
+      provenance: { kind: "supplied", detail: payload.provenanceDetail },
+    };
+    const parsed = roomStudyInputSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new ApiError(400, "invalid_cvc_request", "The changed temperature produces an invalid study revision");
+    }
+    try {
+      calculateRoomStudy(parsed.data, { runId: randomUUID(), createdAt: new Date().toISOString() });
+    } catch {
+      throw new ApiError(400, "invalid_cvc_request", "The changed temperature cannot be calculated");
+    }
+    const runs = await store.listRuns(projectId);
+    const sourceRun = runs
+      .filter((run) => run.inputSnapshot.revisionId === payload.revisionId)
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.runId.localeCompare(right.runId))
+      .at(-1);
+    await store.saveRevision(projectId, parsed.data, payload.revisionId);
+    const run = await store.calculate(projectId, parsed.data.revisionId);
+    return jsonResponse({
+      run,
+      comparison: sourceRun ? await store.compareRuns(projectId, sourceRun.runId, run.runId) : null,
+    });
+  });
+
+  addRoute(routes, "GET", "/workspace/:id/cvc/studies/:projectId/runs/:runId/note", "client", async (ctx) => {
+    requireCvcEnabled();
+    const workspace = await resolveWorkspace(config, ctx.params.id);
+    if (workspace.workspaceType === "remote") {
+      throw new ApiError(400, "cvc_workspace_unsupported", "CVC studies require a local workspace");
+    }
+    const projectId = parseCvcIdentifier(ctx.params.projectId, "projectId");
+    const runId = parseCvcIdentifier(ctx.params.runId, "runId");
+    const store = await openRoomStudyStore(workspace.path);
+    // readRun validates the stored record, revision binding, hashes, and a
+    // deterministic recalculation before the report renderer sees it.
+    const run = await store.readRun(projectId, runId);
+    return jsonResponse({ html: renderRoomStudyHtml(run) });
   });
 
   return routes;

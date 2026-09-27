@@ -139,6 +139,9 @@ importers:
       '@codemirror/view':
         specifier: ^6.38.0
         version: 6.39.14
+      '@cvc/room-study':
+        specifier: workspace:*
+        version: link:../../packages/cvc-room-study
       '@fontsource-variable/geist':
         specifier: ^5.2.8
         version: 5.2.8

@@ -1,6 +1,20 @@
 # CVC-UX-001 — Native study artifact and quieter conversation
 
-Status: backlog, requested by user on 2026-09-27. Priority: next user-facing milestone. This ticket records the design; it does not implement it.
+Status: implemented for user testing, 2026-09-27. Acceptance remains open until the live desktop retest and print/PDF check.
+
+## Implementation delivered
+
+- Native study side panel with Résultats, Données, Historique and Note de calcul; underlying saved record links route to this view.
+- Verified server reads, immutable temperature edits with a source/motive, parent-revision comparison and preserved history.
+- Initial room JSON opens a readable input preview; source code is a secondary action.
+- CVC chat activity collapses by default, Thought rows are suppressed, failures remain visible. Agent instructions prefer a concise summary and named native-study link; HTML export remains explicit opt-in.
+- File tree is closed initially in CVC. System-managed folders require the technical-files checkbox when the tree is opened.
+- Note renders inside the panel. “Imprimer / enregistrer en PDF” opens the print dialog; PDF uses the operating system's PDF printer. A dedicated one-click PDF saver is not implemented.
+- Missing historical targets do not fall back to unrelated current results; revisions sort by timestamp before selecting the latest.
+
+Validation: 33 targeted UI/artifact tests, 6 server route tests, 4 plugin tests; TypeScript checks. The route tests include exact reference values and reopening after server restart. [Native-panel screenshot](../evidence/native-study-results.png) uses synthetic fixture data in a browser harness, not a claimed live assistant interaction.
+
+Still to verify with the user: click the new study link in a fresh live conversation, modify to -10 degrees C, reopen after desktop restart, and inspect print/PDF pagination. Current edit form handles outdoor temperature only; other input edits still use the conversation. Source-file access remains available. Preserve this ticket open for these acceptance checks.
 
 ## Observed problem
 

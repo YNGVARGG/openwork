@@ -1,3 +1,4 @@
+import { cvcStudyTarget } from "./cvc-study-target";
 import type { UIMessage } from "ai";
 
 type OpenTargetKind = "url" | "file";
@@ -175,7 +176,7 @@ function targetFromFile(path: string, confidence: number, reason: string): OpenT
     id: `file:${normalized.toLowerCase()}`,
     kind: "file",
     value: normalized,
-    name: basename(normalized),
+    name: cvcStudyTarget(normalized) ? "Étude thermique" : basename(normalized),
     preview: classifyOpenTarget(normalized, "file"),
     confidence,
     reason,

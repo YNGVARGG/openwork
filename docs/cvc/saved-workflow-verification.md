@@ -23,3 +23,11 @@ The first user chat created a project but failed to save a revision. Repeated la
 The tool now offers `cvc_revision_import` to read a workspace-relative JSON file directly, validate it and save its exact parsed data. Source-file read and project-write permissions are checked separately; the shared workspace file-identity helper rejects linked paths. Parent IDs are optional strings: omit the field for an initial revision. Instructions prefer import and stop repeated identical failures.
 
 Updated plugin tests: 4 passed, 30 assertions, including exact imported data, 770 W, missing fields, path escape and permission denial. Live chat retest remains required after restart.
+
+## Native study artifact — 2026-09-27
+
+Implemented CVC-UX-001 for user testing: native results/data/history/note tabs, read-only friendly JSON input preview, typed outdoor-temperature edits, source provenance, native study links and collapsed activity. Important errors and permissions remain visible. Existing HTML file export remains available on explicit request.
+
+Validation: 33 targeted UI/artifact tests passed, 6 authenticated route tests passed, 4 plugin tests passed. App/server typechecks and production builds passed (existing large-bundle warnings). Route tests verify 770 W → 910.5 W (+140.5 W), unchanged baseline, server restart rereads, read-only/auth/feature gates, invalid temperatures and corrupted results. Browser review of the actual panel component with synthetic fixture data is captured in evidence/native-study-results.png.
+
+Printing uses the operating-system print dialog with a PDF printer option, not a dedicated PDF exporter. Actual user chat → native link → edit → desktop restart and printed pagination remain user acceptance checks; the ticket stays open. General input editing beyond exterior temperatures still uses the conversation.

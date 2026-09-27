@@ -1,3 +1,4 @@
+import { cvcStudyTarget } from "./cvc-study-target";
 import type { OpenworkServerClient } from "@/app/lib/openwork-server";
 
 import { classifyOpenTarget, isOpenableFileTarget, openTargetFromUrl, type OpenTarget } from "./open-target";
@@ -11,12 +12,12 @@ export function openTargetForHref(href: string, targets: OpenTarget[], root?: st
   if (!path && !localArtifactPath("/", value)) return null;
   const exact = targets.find((target) => target.kind === "file"
     && (target.value === value || (path !== null && localArtifactPath(root, target.value) === path)));
-  if (exact) return exact;
+  if (exact) return cvcStudyTarget(exact.value) ? { ...exact, name: "Étude thermique" } : exact;
   return {
     id: `file:${value}`,
     kind: "file",
     value,
-    name: (path ?? value).split(/[/\\]/).pop() || value,
+    name: cvcStudyTarget(value) ? "Étude thermique" : (path ?? value).split(/[/\\]/).pop() || value,
     preview: classifyOpenTarget(path ?? value, "file"),
     confidence: 100,
     reason: "explicit link",

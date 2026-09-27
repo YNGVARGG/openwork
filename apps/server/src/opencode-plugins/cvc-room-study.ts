@@ -50,13 +50,21 @@ export const CvcRoomStudy = async (factoryInput?: unknown) => {
       appendAgentInstructions(result.system, createInstructionSection("cvc-room-study", `## Étude CVC d'une pièce
 Répondez en français dès le premier message pour cette étude. Si les données existent dans un fichier JSON du dossier actif, utilisez cvc_revision_import avec son chemin relatif : ne recopiez jamais le gros objet dans cvc_revision_save. Omettez parentRevisionId pour la première révision ; ne fournissez ni null ni parent fictif. Réutilisez un projet déjà créé. Après deux erreurs identiques, arrêtez les tentatives et expliquez le blocage sans déléguer des répétitions. Utilisez cvc_study_schema pour connaître les données requises ; demandez les valeurs manquantes sans inventer de température, U, débit ou propriété de l'air. Enregistrez la provenance de chaque donnée. Présentez les hypothèses à l'utilisateur. cvc_revision_save valide avant toute écriture et renvoie les champs à corriger.
 Les parois portent des aires brutes ; leurs ouvertures sont imbriquées et déduites une seule fois. Les limites sont des conditions nommées ; les ouvertures et ponts héritent de leur paroi. Le débit est le débit extérieur total déclaré sans récupération. Exclure les ponts exige un motif explicite.
-Créez un projet, enregistrez une révision complète avec un nouvel identifiant, puis appelez cvc_calculate. Seuls les outils de calcul produisent les nombres ; ne calculez pas les résultats dans le texte ou via un script. Citez toujours l'identifiant du calcul sauvegardé. Cette méthode préliminaire ne certifie aucune conformité et ne sélectionne aucun équipement.
-Pour une modification, lisez la révision précédente, enregistrez une nouvelle révision avec parentRevisionId puis calculez et comparez les deux calculs. Pour reprendre un projet dans une autre conversation, utilisez cvc_project_list, cvc_project_read et cvc_run_read. Pour livrer une note, utilisez cvc_report_export et proposez le lien relatif retourné ; ne prétendez pas avoir exporté avant sa réussite. Les anciens calculs ne doivent jamais être écrasés.`));
+Créez un projet, enregistrez une révision complète avec un nouvel identifiant, puis appelez cvc_calculate. Seuls les outils de calcul produisent les nombres ; ne calculez pas les résultats dans le texte ou via un script. Gardez les identifiants techniques dans les outils ; ne les affichez pas dans le résumé. Cette méthode préliminaire ne certifie aucune conformité et ne sélectionne aucun équipement.
+Pour une modification, lisez la révision précédente, enregistrez une nouvelle révision avec parentRevisionId puis calculez et comparez les deux calculs. Pour reprendre un projet dans une autre conversation, utilisez cvc_project_list, cvc_project_read et cvc_run_read. Après un calcul ou à la demande de consulter une étude, appelez cvc_study_open et affichez son markdownLink sans afficher son chemin brut. Répondez brièvement en français : total, état enregistré, hypothèses importantes et lien de l’étude. Les détails sont dans le panneau natif. N’exportez pas de HTML par défaut, même pour une note de calcul : la note et l’impression PDF se trouvent dans l’étude. Réservez cvc_report_export à une demande explicite de fichier HTML. Les anciens calculs ne doivent jamais être écrasés.`));
     },
     tool: {
       cvc_study_schema: {
         description: "Lire le schéma et les unités nécessaires à une étude préliminaire de déperditions hivernales d'une pièce.", args: {},
         async execute() { return output({ schema: z.toJSONSchema(roomStudyInputSchema), note: "Aucune valeur climatique ou constructive par défaut. Identifiants nouveaux pour chaque révision ; unités littérales et provenance obligatoires." }); },
+      },
+      cvc_study_open: {
+        description: "Préparer le lien vers l’étude native (résultats, données, historique et note). Afficher markdownLink dans la réponse, sans chemin brut.", args: projectArgs.shape,
+        async execute(raw: unknown, context?: unknown) {
+          const args = projectArgs.parse(raw);
+          const project = await (await store(context, "read", args.projectId)).readProject(args.projectId);
+          return output({ title: project.name, markdownLink: `[Ouvrir l’étude thermique](.cvc/projects/${args.projectId}/project.json)` });
+        },
       },
       cvc_project_list: {
         description: "Retrouver les études CVC du dossier actif.", args: {},

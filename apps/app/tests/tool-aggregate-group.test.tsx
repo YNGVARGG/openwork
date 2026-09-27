@@ -7,7 +7,7 @@ import { renderToStaticMarkup as renderMarkup } from "react-dom/server";
 import type { DynamicToolUIPart } from "ai";
 
 import { DetailBox, ToolAggregateGroup, buildAggregateRows } from "../src/components/chat/tool-aggregate-group";
-import { getAggregateNowPart, getAggregateRowSearch } from "../src/lib/tool-aggregate";
+import { getAggregateNowPart, getAggregateRowSearch, getCvcAggregateSummary } from "../src/lib/tool-aggregate";
 import { CurrentToolLifecycleProvider } from "../src/components/chat/current-tool-lifecycle-context";
 import { getToolAggregateLifecycle } from "../src/lib/tool-aggregate";
 import { FileChip } from "../src/components/chat/file-chip";
@@ -277,6 +277,29 @@ describe("tool aggregate row merging", () => {
 
     expect(rows).toHaveLength(2);
   });
+});
+
+test("CVC activity summaries use French action labels instead of tool names", () => {
+  const parts: DynamicToolUIPart[] = [
+    {
+      type: "dynamic-tool",
+      toolName: "edit",
+      toolCallId: "edit-summary",
+      state: "output-available",
+      input: { filePath: "/repo/brief.md" },
+      output: "ok",
+    },
+    {
+      type: "dynamic-tool",
+      toolName: "read",
+      toolCallId: "read-summary",
+      state: "output-available",
+      input: { filePath: "/repo/source.md" },
+      output: "contents",
+    },
+  ];
+
+  expect(getCvcAggregateSummary(parts, "past")).toBe("Modification de 1 fichier, Lecture de 1 fichier");
 });
 
 describe("tool aggregate long details", () => {
