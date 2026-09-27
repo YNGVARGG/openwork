@@ -28,6 +28,7 @@ import {
   openworkGatewayQuotaPluginPath,
   openworkOfficeAttachmentsPluginPath,
   openworkSpreadsheetsPluginPath,
+  openworkCvcRoomStudyPluginPath,
   openworkChromeDevtoolsPluginPath,
   openworkPdfAttachmentsPluginPath,
 } from "./openwork-extensions-plugin-path.js";
@@ -107,6 +108,7 @@ export function buildOpenworkRuntimeConfigObjectFromSnapshot(
       openworkExtensionsPreviewPluginPath(),
       openworkOfficeAttachmentsPluginPath(),
       openworkSpreadsheetsPluginPath(),
+      ...(process.env.OPENWORK_CVC_ENABLED === "1" ? [openworkCvcRoomStudyPluginPath()] : []),
       openworkPdfAttachmentsPluginPath(),
       openworkAnthropicAdaptiveThinkingPluginPath(),
       openworkAnthropicToolSchemaPluginPath(),

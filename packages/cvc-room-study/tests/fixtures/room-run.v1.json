@@ -1,0 +1,382 @@
+{
+  "schemaVersion": 1,
+  "runId": "reference-run-1",
+  "createdAt": "2026-09-26T00:00:00Z",
+  "inputSnapshot": {
+    "schemaVersion": 1,
+    "projectId": "synthetic-room",
+    "revisionId": "revision-1",
+    "room": {
+      "id": "room-1",
+      "name": "Pièce de référence 4 × 3 × 2,5 m"
+    },
+    "method": "steady-state-room-loss-v1",
+    "indoorTemperature": {
+      "value": 20,
+      "unit": "degC",
+      "provenance": {
+        "kind": "assumed",
+        "detail": "Synthetic arithmetic reference, not a site or normative value."
+      }
+    },
+    "envelopeDescription": "Six faces declared. Floor and east wall face rooms held at 10 C. No ground boundary. Opening belongs only to north wall.",
+    "surfaces": [
+      {
+        "id": "north",
+        "name": "Mur nord",
+        "kind": "wall",
+        "grossArea": {
+          "value": 10,
+          "unit": "m2",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "thermalTransmittance": {
+          "value": 0.3,
+          "unit": "W/(m2.K)",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "openings": [
+          {
+            "id": "north-window",
+            "name": "Fenêtre nord",
+            "area": {
+              "value": 2,
+              "unit": "m2",
+              "provenance": {
+                "kind": "assumed",
+                "detail": "Synthetic arithmetic reference, not a site or normative value."
+              }
+            },
+            "thermalTransmittance": {
+              "value": 1.4,
+              "unit": "W/(m2.K)",
+              "provenance": {
+                "kind": "assumed",
+                "detail": "Synthetic arithmetic reference, not a site or normative value."
+              }
+            }
+          }
+        ],
+        "boundaryId": "exteriorAir"
+      },
+      {
+        "id": "east",
+        "name": "Mur est",
+        "kind": "wall",
+        "grossArea": {
+          "value": 7.5,
+          "unit": "m2",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "thermalTransmittance": {
+          "value": 0.5,
+          "unit": "W/(m2.K)",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "openings": [],
+        "boundaryId": "unheatedRoom"
+      },
+      {
+        "id": "south",
+        "name": "Mur sud",
+        "kind": "wall",
+        "grossArea": {
+          "value": 10,
+          "unit": "m2",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "thermalTransmittance": {
+          "value": 0.4,
+          "unit": "W/(m2.K)",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "openings": [],
+        "boundaryId": "conditionedAdjacent"
+      },
+      {
+        "id": "west",
+        "name": "Mur ouest",
+        "kind": "wall",
+        "grossArea": {
+          "value": 7.5,
+          "unit": "m2",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "thermalTransmittance": {
+          "value": 0.4,
+          "unit": "W/(m2.K)",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "openings": [],
+        "boundaryId": "conditionedAdjacent"
+      },
+      {
+        "id": "ceiling",
+        "name": "Plafond",
+        "kind": "ceiling",
+        "grossArea": {
+          "value": 12,
+          "unit": "m2",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "thermalTransmittance": {
+          "value": 0.2,
+          "unit": "W/(m2.K)",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "openings": [],
+        "boundaryId": "exteriorAir"
+      },
+      {
+        "id": "floor",
+        "name": "Plancher sur local",
+        "kind": "floor",
+        "grossArea": {
+          "value": 12,
+          "unit": "m2",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "thermalTransmittance": {
+          "value": 0.25,
+          "unit": "W/(m2.K)",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        },
+        "openings": [],
+        "boundaryId": "roomBelow"
+      }
+    ],
+    "airExchange": {
+      "mode": "declared-outdoor-flow-no-recovery",
+      "flow": {
+        "value": 60,
+        "unit": "m3/h",
+        "provenance": {
+          "kind": "assumed",
+          "detail": "Synthetic arithmetic reference, not a site or normative value."
+        }
+      },
+      "density": {
+        "value": 1.2,
+        "unit": "kg/m3",
+        "provenance": {
+          "kind": "assumed",
+          "detail": "Synthetic arithmetic reference, not a site or normative value."
+        }
+      },
+      "specificHeat": {
+        "value": 1000,
+        "unit": "J/(kg.K)",
+        "provenance": {
+          "kind": "assumed",
+          "detail": "Synthetic arithmetic reference, not a site or normative value."
+        }
+      },
+      "scopeDescription": "Total declared outdoor-air flow including all air exchange, no heat recovery; no additional infiltration term.",
+      "boundaryId": "exteriorAir"
+    },
+    "thermalBridges": {
+      "mode": "included",
+      "items": [
+        {
+          "id": "north-bridge",
+          "name": "Liaison synthétique nord",
+          "surfaceId": "north",
+          "linearTransmittance": {
+            "value": 0.1,
+            "unit": "W/(m.K)",
+            "provenance": {
+              "kind": "assumed",
+              "detail": "Synthetic arithmetic reference, not a site or normative value."
+            }
+          },
+          "length": {
+            "value": 5,
+            "unit": "m",
+            "provenance": {
+              "kind": "assumed",
+              "detail": "Synthetic arithmetic reference, not a site or normative value."
+            }
+          }
+        }
+      ]
+    },
+    "boundaries": [
+      {
+        "id": "exteriorAir",
+        "kind": "outdoor",
+        "temperature": {
+          "value": -5,
+          "unit": "degC",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        }
+      },
+      {
+        "id": "unheatedRoom",
+        "kind": "adjacent-room",
+        "temperature": {
+          "value": 10,
+          "unit": "degC",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        }
+      },
+      {
+        "id": "conditionedAdjacent",
+        "kind": "adjacent-room",
+        "temperature": {
+          "value": 20,
+          "unit": "degC",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        }
+      },
+      {
+        "id": "roomBelow",
+        "kind": "adjacent-room",
+        "temperature": {
+          "value": 10,
+          "unit": "degC",
+          "provenance": {
+            "kind": "assumed",
+            "detail": "Synthetic arithmetic reference, not a site or normative value."
+          }
+        }
+      }
+    ]
+  },
+  "method": {
+    "id": "steady-state-room-loss-v1",
+    "version": "1.0.0",
+    "implementationVersion": "reference-fixture-only",
+    "referenceIds": [
+      "docs/cvc/room-heat-loss-reference.md"
+    ]
+  },
+  "contributions": [
+    {
+      "inputId": "north",
+      "kind": "opaque",
+      "coefficientWK": 2.4,
+      "deltaTK": 25,
+      "heatLossW": 60,
+      "netAreaM2": 8
+    },
+    {
+      "inputId": "north-window",
+      "kind": "opening",
+      "coefficientWK": 2.8,
+      "deltaTK": 25,
+      "heatLossW": 70,
+      "areaM2": 2
+    },
+    {
+      "inputId": "east",
+      "kind": "opaque",
+      "coefficientWK": 3.75,
+      "deltaTK": 10,
+      "heatLossW": 37.5,
+      "netAreaM2": 7.5
+    },
+    {
+      "inputId": "south",
+      "kind": "opaque",
+      "coefficientWK": 4,
+      "deltaTK": 0,
+      "heatLossW": 0,
+      "netAreaM2": 10
+    },
+    {
+      "inputId": "west",
+      "kind": "opaque",
+      "coefficientWK": 3,
+      "deltaTK": 0,
+      "heatLossW": 0,
+      "netAreaM2": 7.5
+    },
+    {
+      "inputId": "ceiling",
+      "kind": "opaque",
+      "coefficientWK": 2.4,
+      "deltaTK": 25,
+      "heatLossW": 60,
+      "netAreaM2": 12
+    },
+    {
+      "inputId": "floor",
+      "kind": "opaque",
+      "coefficientWK": 3,
+      "deltaTK": 10,
+      "heatLossW": 30,
+      "netAreaM2": 12
+    },
+    {
+      "inputId": "north-bridge",
+      "kind": "thermal-bridge",
+      "coefficientWK": 0.5,
+      "deltaTK": 25,
+      "heatLossW": 12.5,
+      "lengthM": 5
+    },
+    {
+      "inputId": "air-exchange",
+      "kind": "air-exchange",
+      "coefficientWK": 20,
+      "deltaTK": 25,
+      "heatLossW": 500,
+      "flowM3s": 0.016666666666666666
+    }
+  ],
+  "totals": {
+    "transmissionW": 257.5,
+    "thermalBridgesW": 12.5,
+    "airExchangeW": 500,
+    "heatLossW": 770
+  },
+  "warnings": [
+    "Synthetic preliminary study; not regulatory sizing. All inputs are declared synthetic assumptions."
+  ],
+  "applicability": "preliminary-study-not-regulatory-sizing"
+}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useWorkbenchDisclosure } from "@/react-app/domains/session/chat/workbench-ui-state"
+import { isCvcStudioBuild } from "@/app/lib/cvc-studio"
 import { ChevronDown } from "lucide-react"
 
 import {
@@ -25,6 +26,10 @@ type ReasoningBlockProps = {
  */
 export function ReasoningBlock({ text, isStreaming, className, disclosureKey }: ReasoningBlockProps) {
   const [open, setOpen] = useWorkbenchDisclosure(disclosureKey)
+
+  // CVC Studio keeps the conversation focused on outcomes. Reasoning remains
+  // available to the runtime but is not presented as a transcript activity row.
+  if (isCvcStudioBuild) return null
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className={cn("w-full", className)} data-reasoning-block="">

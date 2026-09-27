@@ -43,3 +43,5 @@ export const openworkTitleRecoveryPluginPath = () => openworkPluginPath("openwor
 export const openworkGatewayQuotaPluginPath = () => openworkPluginPath("openwork-gateway-quota");
 export const openworkGatewayQuotaV2PluginPath = () => openworkPluginPath("openwork-gateway-quota-v2");
 export const openworkProviderFiltersV2PluginPath = () => openworkPluginPath("openwork-provider-filters-v2");
+
+export const openworkCvcRoomStudyPluginPath = () => openworkPluginPath("cvc-room-study");

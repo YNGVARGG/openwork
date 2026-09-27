@@ -156,6 +156,7 @@ try {
 }
 
 contextBridge.exposeInMainWorld("__OPENWORK_ELECTRON__", {
+  cvc: { exportPdf: (payload) => ipcRenderer.invoke("cvc:export-pdf", payload) },
   invokeDesktop(command, ...args) {
     return ipcRenderer.invoke("openwork:desktop", command, ...args);
   },

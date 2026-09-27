@@ -1,17 +1,19 @@
 "use client"
 
 import { Fragment, useState } from "react"
-import { Check, ChevronUp, CircleHelp, CirclePause, Copy, MoreHorizontal } from "lucide-react"
+import { Check, ChevronRight, ChevronUp, CircleHelp, CirclePause, Copy, MoreHorizontal } from "lucide-react"
 
 import { FileChip } from "@/components/chat/file-chip"
 import { ShellCommandText } from "@/components/chat/shell-command-text"
 import { ReasoningBlock } from "@/components/chat/reasoning-block"
+import { isCvcStudioBuild } from "@/app/lib/cvc-studio"
 import { useWorkbenchDisclosure } from "@/react-app/domains/session/chat/workbench-ui-state"
 import { useCurrentToolLifecycleResolver } from "@/components/chat/current-tool-lifecycle-context"
 import { Button } from "@/components/ui/button"
 import {
   getAggregateNowPart,
   getAggregateCountSummary,
+  getCvcAggregateSummary,
   getToolAggregateLifecycle,
   getAggregateRowFile,
   getAggregateRowLabel,
@@ -193,6 +195,7 @@ export function buildAggregateRows(parts: AnyToolPart[], thoughts: AggregateThou
  * dot, monospace action, per-item duration — capped with "Show N more".
  */
 export function ToolAggregateGroup({ parts, messageId, thoughts = [], className }: ToolAggregateGroupProps) {
+  const cvcStudio = isCvcStudioBuild
   const groupKey = parts[0]?.toolCallId ?? "aggregate"
   const latestToolCallId = parts.at(-1)?.toolCallId ?? groupKey
   const keyFor = (id: string, detail: string) => messageId ? JSON.stringify(["tool", messageId, id, detail]) : undefined
@@ -219,11 +222,14 @@ export function ToolAggregateGroup({ parts, messageId, thoughts = [], className 
   const visiblyRunning = aggregateLifecycle === "running"
   const failedCount = parts.filter((part) => part.state === "output-error").length
   const countSummary = getAggregateCountSummary(parts)
-  const summary = aggregateLifecycle === "waiting"
+  const defaultSummary = aggregateLifecycle === "waiting"
     ? `Waiting for your action · ${countSummary}`
     : aggregateLifecycle === "unknown"
       ? `Status unknown · ${countSummary}`
       : getAggregateSummary(parts, visiblyRunning ? "present" : "past")
+  const summary = cvcStudio
+    ? `Détails de l’activité · ${aggregateLifecycle === "waiting" ? "En attente de votre action" : aggregateLifecycle === "unknown" ? "État à vérifier" : failedCount ? "Une étape a échoué" : getCvcAggregateSummary(parts, visiblyRunning ? "present" : "past")}`
+    : defaultSummary
   const nowPart = visiblyRunning ? getAggregateNowPart(parts) : null
   const nowLabel = nowPart ? getAggregateRowLabel(nowPart) : null
   // A running command is clipped to one line; double-clicking swaps that
@@ -235,7 +241,7 @@ export function ToolAggregateGroup({ parts, messageId, thoughts = [], className 
   // The model is thinking mid-run: no tool is in flight but the run's
   // latest thought is still streaming. Show that instead of dead air.
   const lastThought = thoughts.at(-1)
-  const thinkingNow = !nowLabel && Boolean(lastThought?.isStreaming)
+  const thinkingNow = !cvcStudio && !nowLabel && Boolean(lastThought?.isStreaming)
 
   // Track durations for every part so each is frozen the moment it completes.
   const durations = parts.map((part) => trackToolCallDuration(part))
@@ -252,7 +258,7 @@ export function ToolAggregateGroup({ parts, messageId, thoughts = [], className 
   // "Edited 1 file" above "Edited file-chip.tsx" says nothing twice.
   // A group that is exactly one file action (and no thoughts) renders
   // as the row itself — verb, chip, duration — with nothing to expand.
-  const soloRow = rows.length === 1 && thoughts.length === 0 ? rows[0] : undefined
+  const soloRow = !cvcStudio && rows.length === 1 && thoughts.length === 0 ? rows[0] : undefined
   const soloFile = soloRow ? getAggregateRowFile(soloRow.part) : null
   if (soloRow && soloFile) {
     const status = isToolPartInFlight(soloRow.part)
@@ -294,6 +300,11 @@ export function ToolAggregateGroup({ parts, messageId, thoughts = [], className 
     )
   }
 
+  const failures = rows.flatMap((row) => {
+    const text = failureText(row.part)
+    return text ? [{ toolCallId: row.part.toolCallId, text }] : []
+  })
+
   return (
     <div
       className={className}
@@ -307,7 +318,13 @@ export function ToolAggregateGroup({ parts, messageId, thoughts = [], className 
         className="group flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 text-start text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <span className="min-w-0 truncate">{summary}</span>
-        {thoughts.length > 0 ? (
+        {cvcStudio ? (
+          <ChevronRight
+            aria-hidden="true"
+            className={cn("size-3.5 shrink-0 transition-transform duration-150", expanded && "rotate-90")}
+          />
+        ) : null}
+        {!cvcStudio && thoughts.length > 0 ? (
           <span data-tool-aggregate-thought-count className="shrink-0 text-xs text-muted-foreground/70">
             · {thoughts.length === 1 ? "1 thought" : `${thoughts.length} thoughts`}
           </span>
@@ -317,12 +334,18 @@ export function ToolAggregateGroup({ parts, messageId, thoughts = [], className 
             {singleCommandDuration}
           </span>
         ) : null}
-        {failedCount > 0 ? (
+        {!cvcStudio && failedCount > 0 ? (
           <span className="shrink-0 text-xs text-muted-foreground">
             {failedCount} failed
           </span>
         ) : null}
       </button>
+
+      {cvcStudio ? failures.map((failure) => (
+        <div key={failure.toolCallId} className="mt-1.5">
+          {detailBox("error", failure.toolCallId, failure.text)}
+        </div>
+      )) : null}
 
       {aggregateLifecycle === "waiting" ? (
         <div className="mt-1 flex items-center gap-1.5 text-xs text-amber-11" role="status">
@@ -338,11 +361,11 @@ export function ToolAggregateGroup({ parts, messageId, thoughts = [], className 
         </div>
       ) : null}
 
-      {nowPart && nowCommandShown ? (
+      {!cvcStudio && nowPart && nowCommandShown ? (
         <div data-tool-aggregate-now className="mt-1.5 min-w-0">
           <DetailBox kind="command" text={nowCommand} expanded={fullNowCommand} onToggle={() => setFullNowCommand(false)} />
         </div>
-      ) : nowLabel ? (
+      ) : !cvcStudio && nowLabel ? (
         <div
           data-tool-aggregate-now
           className="mt-1 min-w-0 text-sm text-muted-foreground"
@@ -384,7 +407,7 @@ export function ToolAggregateGroup({ parts, messageId, thoughts = [], className 
             const search = bash ? null : getAggregateRowSearch(part)
             return (
               <Fragment key={part.toolCallId}>
-              {thoughtsAt(row.index).map((thought) => (
+              {!cvcStudio && thoughtsAt(row.index).map((thought) => (
                 <div key={`thought-${row.index}-${thought.afterIndex}`} data-tool-aggregate-thought className="py-1">
                   <ReasoningBlock disclosureKey={keyFor(groupKey, `thought-${thought.afterIndex}`)} text={thought.text} isStreaming={thought.isStreaming} />
                 </div>
@@ -453,12 +476,12 @@ export function ToolAggregateGroup({ parts, messageId, thoughts = [], className 
                 ) : null}
                 {bash && command ? detailBox("command", part.toolCallId, command) : null}
                 {search ? detailBox("pattern", part.toolCallId, search.pattern) : null}
-                {failure ? detailBox("error", part.toolCallId, failure) : null}
+                {!cvcStudio && failure ? detailBox("error", part.toolCallId, failure) : null}
               </div>
               </Fragment>
             )
           })}
-          {trailingThoughts.map((thought) => (
+          {!cvcStudio && trailingThoughts.map((thought) => (
             <div key={`thought-trailing-${thought.afterIndex}`} data-tool-aggregate-thought className="py-1">
               <ReasoningBlock disclosureKey={keyFor(groupKey, `thought-${thought.afterIndex}`)} text={thought.text} isStreaming={thought.isStreaming} />
             </div>

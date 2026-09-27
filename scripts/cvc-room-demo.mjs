@@ -1,0 +1,24 @@
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import { openRoomStudyStore } from "../packages/cvc-room-study/dist/store.js";
+
+const root = fileURLToPath(new URL("../", import.meta.url));
+const workspace = resolve(root, ".cvc-demo");
+await mkdir(workspace, { recursive: true });
+const store = await openRoomStudyStore(workspace);
+const input = JSON.parse(await readFile(new URL("../packages/cvc-room-study/tests/fixtures/room-input.v1.json", import.meta.url), "utf8"));
+input.projectId = `reference-${randomUUID()}`;
+await store.createProject(input.projectId, "Étude synthétique — pièce de référence");
+await store.saveRevision(input.projectId, input);
+const first = await store.calculate(input.projectId, input.revisionId);
+const revised = structuredClone(input);
+revised.revisionId = "revision-2";
+revised.boundaries.find((boundary) => boundary.id === "exteriorAir").temperature.value = -10;
+await store.saveRevision(input.projectId, revised, input.revisionId);
+const second = await store.calculate(input.projectId, revised.revisionId);
+const reopened = await openRoomStudyStore(workspace);
+const comparison = await reopened.compareRuns(input.projectId, first.runId, second.runId);
+const exported = await reopened.exportReport(input.projectId, second.runId);
+console.log(JSON.stringify({ workspace, projectId: input.projectId, baselineW: first.totals.heatLossW, revisedW: second.totals.heatLossW, differenceW: comparison.totals.delta.heatLossW, reportPath: resolve(workspace, exported.relativePath) }, null, 2));

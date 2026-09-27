@@ -1,4 +1,6 @@
 import type { McpStatusMap } from "../types";
+import type { RoomStudyInput, RoomStudyRun } from "@cvc/room-study";
+import type { RoomStudyRunComparison } from "@cvc/room-study/report";
 import type { ConnectionActionIntent } from "@openwork/types/connection-action-app";
 import type { Message, Part, Session, Todo } from "@opencode-ai/sdk/v2/client";
 import type { GatewayDesktopOauthStartRequest, GatewayDesktopOauthStartResponse, GatewayUsableModel } from "@openwork/types/den/gateway";
@@ -362,6 +364,40 @@ export type OpenworkWorkspaceFileDeleteResult = {
   ok: boolean;
   path: string;
   code?: string;
+};
+
+export type OpenworkCvcStudyProject = {
+  schemaVersion: 1;
+  projectId: string;
+  name: string;
+  createdAt: string;
+};
+
+export type OpenworkCvcStudyRevision = {
+  schemaVersion: 1;
+  createdAt: string;
+  parentRevisionId: string | null;
+  input: RoomStudyInput;
+  inputHash: string;
+  revisionHash: string;
+};
+
+export type OpenworkCvcStudy = {
+  project: OpenworkCvcStudyProject;
+  revisions: OpenworkCvcStudyRevision[];
+  runs: RoomStudyRun[];
+};
+
+export type OpenworkCvcStudyTemperatureInput = {
+  revisionId: string;
+  boundaryId: string;
+  temperature: number;
+  provenanceDetail: string;
+};
+
+export type OpenworkCvcStudyTemperatureResult = {
+  run: RoomStudyRun;
+  comparison: RoomStudyRunComparison | null;
 };
 
 export type OpenworkWorkspaceCatalogEntry = {
@@ -1853,6 +1889,28 @@ export function createOpenworkServerClient(options: { baseUrl: string; token?: s
         `/workspace/${workspaceId}/config`,
         { token, hostToken, timeoutMs: timeouts.config },
       ),
+    cvcStudy: (workspaceId: string, projectId: string) =>
+      requestJson<OpenworkCvcStudy>(
+        baseUrl,
+        `/workspace/${encodeURIComponent(workspaceId)}/cvc/studies/${encodeURIComponent(projectId)}`,
+        { token, hostToken, timeoutMs: timeouts.config },
+      ),
+    cvcStudyTemperature: (workspaceId: string, projectId: string, input: OpenworkCvcStudyTemperatureInput) =>
+      requestJson<OpenworkCvcStudyTemperatureResult>(
+        baseUrl,
+        `/workspace/${encodeURIComponent(workspaceId)}/cvc/studies/${encodeURIComponent(projectId)}/temperature`,
+        { token, hostToken, method: "POST", body: input, timeoutMs: timeouts.config },
+      ),
+    cvcStudyReview: (workspaceId: string, projectId: string, runId: string) =>
+      requestJson<OpenworkCvcReview>(baseUrl,
+        `/workspace/${encodeURIComponent(workspaceId)}/cvc/studies/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/review`,
+        { token, hostToken, method: "POST", body: {}, timeoutMs: 35_000 }),
+    cvcStudyNote: (workspaceId: string, projectId: string, runId: string) =>
+      requestJson<{ html: string }>(
+        baseUrl,
+        `/workspace/${encodeURIComponent(workspaceId)}/cvc/studies/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/note`,
+        { token, hostToken, timeoutMs: timeouts.config },
+      ),
     getWorkspaceRunMode: (workspaceId: string) =>
       requestJson<WorkspaceRunModeResponse>(baseUrl, `/workspace/${encodeURIComponent(workspaceId)}/permissions/mode`, {
         token, hostToken, timeoutMs: timeouts.config,
@@ -2598,3 +2656,9 @@ export function createOpenworkServerClient(options: { baseUrl: string; token?: s
 }
 
 export type OpenworkServerClient = ReturnType<typeof createOpenworkServerClient>;
+
+export type OpenworkCvcReview = {
+  runId: string; revisionId: string; inputHash: string; questionVersion: string;
+  status: "ready" | "unavailable"; message: string; model: string | null;
+  findings: { id: string; label: string; decision: "coherent" | "clarify" | "insufficient"; confidence: number; action: string }[];
+};

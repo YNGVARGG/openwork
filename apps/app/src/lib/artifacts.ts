@@ -1,3 +1,4 @@
+import { cvcStudyTarget } from "@/react-app/domains/session/artifacts/cvc-study-target";
 import type { UIMessage } from "ai";
 import * as React from "react";
 
@@ -148,6 +149,7 @@ export function canOpenArtifact(artifact: ArtifactItem) {
 }
 
 function getArtifactName(path: string) {
+  if (cvcStudyTarget(path)) return "Étude thermique";
   const segments = path.split(/[/\\]/);
   
   return segments[segments.length - 1] ?? path;

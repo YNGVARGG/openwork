@@ -1,5 +1,5 @@
 /** @jsxImportSource react */
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FileTree, useFileTree, useFileTreeSearch } from "@pierre/trees/react";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw, Search } from "lucide-react";
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { useNativeContextMenu } from "@/components/ui/action-context-menu";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { cn } from "@/lib/utils";
+
+import { isCvcStudioBuild } from "@/app/lib/cvc-studio";
 
 const TREE_CSS = `
   :host {
@@ -79,7 +81,8 @@ export function WorkspaceFileTree({ client, workspaceId, workspaceName, selected
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
-  const entries = query.data?.items ?? [];
+  const [technicalFiles, setTechnicalFiles] = useState(false);
+  const entries = useMemo(() => (query.data?.items ?? []).filter((entry) => !isCvcStudioBuild || technicalFiles || !entry.path.replaceAll("\\", "/").split("/").some((part) => [".cvc", ".opencode", ".git", "node_modules"].includes(part))), [query.data, technicalFiles]);
   const entriesByPath = useMemo(() => new Map(entries.map((entry) => [entry.path, entry])), [entries]);
   const entriesByPathRef = useRef(entriesByPath);
   entriesByPathRef.current = entriesByPath;
@@ -168,6 +171,7 @@ export function WorkspaceFileTree({ client, workspaceId, workspaceName, selected
           <RefreshCw className={cn(query.isFetching && "animate-spin")} />
         </Button>
       </div>
+      {isCvcStudioBuild ? <label className="flex items-center gap-2 border-b p-2 text-xs"><input type="checkbox" checked={technicalFiles} onChange={(event) => setTechnicalFiles(event.target.checked)} />Fichiers techniques</label> : null}
       {query.isError ? (
         <p role="alert" className="p-3 text-xs text-dls-secondary">Could not load workspace files. Use Refresh to try again.</p>
       ) : (

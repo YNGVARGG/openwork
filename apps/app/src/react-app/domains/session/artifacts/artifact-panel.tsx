@@ -19,6 +19,12 @@ import { type ArtifactPanelTab, usePanelTabStore } from "../panel/panel-tab-stor
 import { isCollectibleArtifactTarget, openTargetFromWorkspaceFile, type BinaryData, type Data, type OpenTarget, type TextData } from "./open-target";
 import { HTMLPreview, ImagePreview, MarkdownPreview, PdfPreview, PlainText, PreviewError, PreviewLoading, PreviewUnavailable } from "./preview";
 
+import { roomStudyInputSchema } from "@cvc/room-study";
+import { isCvcStudioBuild } from "@/app/lib/cvc-studio";
+import { cvcStudyTarget } from "./cvc-study-target";
+const CvcInputPreview = lazy(() => import("./cvc-study-panel").then((module) => ({ default: module.CvcInputPreview })));
+const CvcStudyPanel = lazy(() => import("./cvc-study-panel").then((module) => ({ default: module.CvcStudyPanel })));
+
 const ArtifactTextEditor = lazy(() =>
   import("./artifact-text-editor").then((module) => ({ default: module.ArtifactTextEditor })),
 );
@@ -79,6 +85,9 @@ export function ArtifactPanel({ sessionId, tab, client, workspaceId, workspaceRo
     return null;
   }
 
+  const study = isCvcStudioBuild && target.kind === "file" ? cvcStudyTarget(target.value) : null;
+  if (study) return <Suspense fallback={<PreviewLoading />}><CvcStudyPanel key={`${workspaceId}:${target.id}`} client={client} workspaceId={workspaceId} {...study} onClose={onClose} /></Suspense>;
+
   return (
     <ArtifactPanelView
       sessionId={sessionId}
@@ -99,7 +108,8 @@ function ArtifactPanelView({ sessionId, client, workspaceId, workspaceRoot, isRe
   const platform = usePlatform();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
-  const [treeOpen, setTreeOpen] = useState(true);
+  const [showSource, setShowSource] = useState(false);
+  const [treeOpen, setTreeOpen] = useState(!isCvcStudioBuild);
   const [draft, setDraft] = useState("");
   const lastSyncedRef = useRef<string | null>(null);
   const failedDraftRef = useRef<string | null>(null);
@@ -107,7 +117,7 @@ function ArtifactPanelView({ sessionId, client, workspaceId, workspaceRoot, isRe
   // Plain text opens directly in CodeMirror. Markdown and HTML default to
   // their rendered previews and retain the existing Edit toggle.
   const isDirectTextEdit = isTextContent(target) && target.preview === "text";
-  const isDirectCodeEdit = target.kind === "file" && target.preview === "code";
+  const isDirectCodeEdit = target.kind === "file" && target.preview === "code" && !(isCvcStudioBuild && /\.json$/i.test(target.value));
   const canUseDesktopWorkspaceActions = !isRemoteWorkspace && platform.capabilities.revealInFileManager;
   const canUseDesktopFileActions = target.kind === "file" && canUseDesktopWorkspaceActions;
   const workspaceName = workspaceRoot.split(/[/\\]/).filter(Boolean).pop() ?? "Workspace";
@@ -150,6 +160,11 @@ function ArtifactPanelView({ sessionId, client, workspaceId, workspaceRoot, isRe
     gcTime: 0,
   });
 
+  const roomInput = useMemo(() => {
+    if (!isCvcStudioBuild || data?.kind !== "text" || !/\.json$/i.test(target.value)) return null;
+    try { const parsed = roomStudyInputSchema.safeParse(JSON.parse(data.data)); return parsed.success ? parsed.data : null; } catch { return null; }
+  }, [data, target.value]);
+
   const [binaryObjectUrl, setBinaryObjectUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -169,6 +184,7 @@ function ArtifactPanelView({ sessionId, client, workspaceId, workspaceRoot, isRe
 
   useEffect(() => {
     setEditing(false);
+    setShowSource(false);
     setDraft("");
     lastSyncedRef.current = null;
     failedDraftRef.current = null;
@@ -329,14 +345,15 @@ function ArtifactPanelView({ sessionId, client, workspaceId, workspaceRoot, isRe
           </Tooltip>
           <div className="min-w-0 flex-1 flex items-center gap-1.5">
             <h3 className="min-w-0 truncate text-sm font-medium text-foreground">
-              {target.name}
+              {roomInput ? "Données de la pièce" : target.name}
             </h3>
             <span className="shrink-0 text-xs text-muted-foreground">
               {target.exists === false ? "missing" : isEditingSurface ? (isSaving || isDirty ? "Saving\u2026" : "Saved") : ""}
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {isTextContent(target) && data?.kind === "text" && !isDirectTextEdit && !isDirectCodeEdit ? (
+            {roomInput ? <Button variant="ghost" size="sm" onClick={() => setShowSource((value) => !value)}>{showSource ? "Voir les données" : "Voir le fichier source"}</Button> : null}
+            {!roomInput && isTextContent(target) && data?.kind === "text" && !isDirectTextEdit && !isDirectCodeEdit ? (
               <Tooltip>
                 <TooltipTrigger
                   render={(
@@ -413,6 +430,8 @@ function ArtifactPanelView({ sessionId, client, workspaceId, workspaceRoot, isRe
           <PreviewLoading />
         ) : isError ? (
           <PreviewError message={error instanceof Error ? error.message : "Failed to load artifact" } />
+        ) : roomInput && !showSource ? (
+          <Suspense fallback={<PreviewLoading />}><CvcInputPreview input={roomInput} /></Suspense>
         ) : data?.kind === "text" && (editing || isDirectTextEdit) ? (
           <TextEditor value={draft} language={target.preview === "markdown" ? "markdown" : "text"} onChange={setDraft} />
         ) : target.preview === "markdown" && data?.kind === "text" ? (

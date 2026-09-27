@@ -1,3 +1,4 @@
+import { renderCvcPdf, pdfFileName } from "./cvc-pdf.mjs";
 import { processBlankSlateProfile, resolveBlankSlateLaunch } from "./blank-slate-profile.mjs";
 import { DESKTOP_POLICY_ENFORCEMENT_ENABLED } from "@openwork/types/den/desktop-policies-runtime";
 import { execFileSync, spawn } from "node:child_process";
@@ -127,6 +128,8 @@ const DESKTOP_DISTRIBUTION = resolveDesktopDistribution({
   packageFlavor: Reflect.get(desktopPackageMetadata, "openworkDistribution"),
   environmentFlavor: process.env.OPENWORK_DESKTOP_DISTRIBUTION,
 });
+// Packaged identity is authoritative; inherited shell flags cannot enable CVC in another distribution.
+process.env.OPENWORK_CVC_ENABLED = DESKTOP_DISTRIBUTION.flavor === "cvc" ? "1" : "0";
 const TAURI_APP_IDENTIFIER = DESKTOP_DISTRIBUTION.appIdentifier;
 const DEV_APP_IDENTIFIER = `${DESKTOP_DISTRIBUTION.appIdentifier}.dev`;
 const DESKTOP_PROTOCOL_SCHEME = DESKTOP_DISTRIBUTION.protocolScheme;
@@ -2759,6 +2762,16 @@ ipcMain.on("openwork:desktop-distribution-sync", (event) => {
 ipcMain.on("openwork:window-fullscreen-sync", (event) => {
   event.returnValue = BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false;
 });
+ipcMain.handle("cvc:export-pdf", async (event, payload) => {
+  if (DESKTOP_DISTRIBUTION.flavor !== "cvc" || !mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== event.sender.mainFrame) throw new Error("Export indisponible.");
+  if (!payload || typeof payload.html !== "string" || typeof payload.title !== "string") throw new Error("Note invalide.");
+  const selection = await dialog.showSaveDialog(mainWindow, { title: "Exporter la note de calcul", defaultPath: pdfFileName(payload.title), filters: [{ name: "PDF", extensions: ["pdf"] }] });
+  if (selection.canceled || !selection.filePath) return { canceled: true };
+  const pdf = await renderCvcPdf(payload.html);
+  await writeFile(selection.filePath, pdf);
+  return { canceled: false, fileName: path.basename(selection.filePath) };
+});
+
 ipcMain.handle("openwork:desktop", handleDesktopInvoke);
 ipcMain.handle("openwork:shell:openExternal", async (_event, url) => {
   if (typeof url !== "string" || url.trim().length === 0) {

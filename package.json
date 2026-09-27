@@ -75,7 +75,11 @@
     "release:cut:watch": "node scripts/release/cut.mjs --watch",
     "test:core": "pnpm --filter @openwork/app test:core && pnpm --filter openwork-server test:core && pnpm --filter @openwork-ee/den-api test && pnpm --filter @openwork/desktop test:core && pnpm --dir evals run test:core",
     "test:extended": "pnpm --filter @openwork/app test && pnpm --filter openwork-server test && pnpm --filter @openwork-ee/den-api test && pnpm --filter @openwork/desktop test && node --test scripts/release/*.test.mjs && pnpm test:eval-runner && pnpm evals:pr && pnpm test:e2e",
-    "evals:check-browser": "pnpm --dir evals check:browser"
+    "evals:check-browser": "pnpm --dir evals check:browser",
+    "test:cvc:room": "pnpm --filter @cvc/room-study test",
+    "typecheck:cvc:room": "pnpm --filter @cvc/room-study typecheck",
+    "demo:cvc:room": "pnpm --filter @cvc/room-study build && node scripts/cvc-room-demo.mjs",
+    "test:cvc:tools": "pnpm --filter @cvc/room-study build && pnpm --filter openwork-server exec bun test src/opencode-plugins/cvc-room-study.test.ts"
   },
   "devDependencies": {
     "@stoplight/spectral-cli": "6.16.3",

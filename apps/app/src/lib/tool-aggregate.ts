@@ -168,6 +168,40 @@ export function getAggregateSummary(parts: AnyToolPart[], tense: "present" | "pa
   return joined.charAt(0).toUpperCase() + joined.slice(1)
 }
 
+/** A compact, human-facing French summary for CVC Studio's collapsed activity. */
+export function getCvcAggregateSummary(parts: AnyToolPart[], tense: "present" | "past"): string {
+  const commands = parts.filter((part) => getToolFamily(part) === "command").length
+  const editPaths = new Set<string>()
+  const readPaths = new Set<string>()
+  let editCalls = 0
+  let readCalls = 0
+  let searches = 0
+
+  for (const part of parts) {
+    const family = getToolFamily(part)
+    if (family === "edit") {
+      editCalls += 1
+      const path = filePathOf(part)
+      if (path) editPaths.add(path)
+    } else if (family === "read") {
+      readCalls += 1
+      const path = filePathOf(part)
+      if (path) readPaths.add(path)
+    } else if (family === "search") {
+      searches += 1
+    }
+  }
+
+  const filesEdited = editPaths.size || editCalls
+  const filesRead = readPaths.size || readCalls
+  const pieces: string[] = []
+  if (filesEdited) pieces.push(`${tense === "past" ? "Modification" : "Modification en cours"} de ${filesEdited} ${filesEdited === 1 ? "fichier" : "fichiers"}`)
+  if (commands) pieces.push(`${tense === "past" ? "Exécution" : "Exécution en cours"} de ${commands} ${commands === 1 ? "commande" : "commandes"}`)
+  if (filesRead) pieces.push(`${tense === "past" ? "Lecture" : "Lecture en cours"} de ${filesRead} ${filesRead === 1 ? "fichier" : "fichiers"}`)
+  if (searches) pieces.push(`${tense === "past" ? "Recherche" : "Recherche en cours"} ${searches === 1 ? "effectuée" : "effectuées"}`)
+  return pieces.join(", ") || (tense === "past" ? "Étapes terminées" : "Travail en cours")
+}
+
 export function fileName(path: string): string {
   const segments = path.split(/[/\\]/)
   return segments[segments.length - 1] || path
